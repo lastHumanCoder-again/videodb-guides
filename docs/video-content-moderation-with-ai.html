@@ -102,11 +102,11 @@ body{background:#0B0B0C;margin:0}
 <rect width="720" height="190" rx="12" fill="#0B0B0C"/>
 <text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">SHARE OF CONTENT VOLUME REACHING HUMAN REVIEWERS</text>
 <text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Manual-first moderation</text>
-<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
-<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">100% of volume</text>
+<rect x="300" y="62" width="330" height="26" rx="5" fill="#2A2A2E"/>
+<text x="638" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">100% of volume</text>
 <text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">ML-first triage (flagged queue)</text>
-<rect x="300" y="108" width="18" height="26" rx="5" fill="#E85810"/>
-<text x="326" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">~1–5% of volume</text>
+<rect x="300" y="108" width="16" height="26" rx="5" fill="#E85810"/>
+<text x="324" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">~1–5% of volume</text>
 <text x="40" y="176" font-size="11.5" fill="#8C8C94">Percent of total content volume routed to human review. Source: AWS Rekognition documentation.</text>
 </svg><figcaption class="vb-cap">ML-first triage cuts the human review queue to roughly 1–5% of total volume. Source: <a href="https://docs.aws.amazon.com/rekognition/latest/dg/moderation.html" rel="noopener" target="_blank">AWS Rekognition documentation</a>.</figcaption></figure></div>
 <p class="vb-intro">A <strong>video moderation API</strong> screens video content against policy programmatically: it transcribes speech to catch profanity and harassment, analyzes visuals for policy violations, and routes flagged moments to human reviewers. The pipeline worth building has one property most miss — every flag carries a playable evidence clip, so a reviewer judges the actual moment instead of a thumbnail and a confidence score. This tutorial builds that pipeline in Python: a spoken-word layer for language, custom-prompt visual indexing for policy, and a review queue with watchable evidence.</p>

@@ -14,7 +14,7 @@ ASSETS.mkdir(exist_ok=True); SPECS.mkdir(exist_ok=True)
 CANVAS = "#0B0B0C"; CARD = "#141416"; ORANGE = "#E85810"; HAIR = "#2A2A2E"
 TXT = "#F4F2EE"; MUTED = "#8C8C94"; GOOD = "#3DD68C"; BAD = "#E5484D"
 FONT = "'Inter',system-ui,sans-serif"; DISPLAY = "'Archivo Black','Inter',sans-serif"
-BX0, BMAX = 300, 360
+BX0, BMAX = 300, 330
 
 def esc(s): return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 

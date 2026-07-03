@@ -2,8 +2,8 @@
 <rect width="720" height="190" rx="12" fill="#0B0B0C"/>
 <text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">TIME FROM QUERY TO PLAYABLE MOMENT (SECONDS)</text>
 <text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Conventional pipeline (search → seek → cut clip)</text>
-<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
-<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">~12 s</text>
+<rect x="300" y="62" width="330" height="26" rx="5" fill="#2A2A2E"/>
+<text x="638" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">~12 s</text>
 <text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB semantic search</text>
 <rect x="300" y="108" width="6" height="26" rx="5" fill="#E85810"/>
 <text x="314" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">~120 ms — hit is a playable clip</text>

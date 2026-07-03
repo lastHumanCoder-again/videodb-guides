@@ -2,10 +2,10 @@
 <rect width="720" height="190" rx="12" fill="#0B0B0C"/>
 <text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">WHY AGENTS CAN'T WATCH EVERY FRAME: FRAMES PER HOUR OF VIDEO</text>
 <text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Every frame at 30 fps</text>
-<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
-<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">108,000 frames</text>
+<rect x="300" y="62" width="330" height="26" rx="5" fill="#2A2A2E"/>
+<text x="638" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">108,000 frames</text>
 <text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Sampled at 1 fps</text>
-<rect x="300" y="108" width="12" height="26" rx="5" fill="#E85810"/>
-<text x="320" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">3,600 frames</text>
+<rect x="300" y="108" width="11" height="26" rx="5" fill="#E85810"/>
+<text x="319" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">3,600 frames</text>
 <text x="40" y="176" font-size="11.5" fill="#8C8C94">Source: frame-rate arithmetic (30 fps x 3,600 s); VLM context costs per arxiv.org/abs/2403.05530.</text>
 </svg>

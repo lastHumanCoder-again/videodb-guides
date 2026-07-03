@@ -5,11 +5,11 @@
 <rect x="300" y="62" width="6" height="26" rx="5" fill="#2A2A2E"/>
 <text x="314" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$324 — full re-read</text>
 <text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 10 questions</text>
-<rect x="300" y="108" width="36" height="26" rx="5" fill="#2A2A2E"/>
-<text x="344" y="125" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$3,240</text>
+<rect x="300" y="108" width="33" height="26" rx="5" fill="#2A2A2E"/>
+<text x="341" y="125" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$3,240</text>
 <text x="288" y="171" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 100 questions</text>
-<rect x="300" y="154" width="360" height="26" rx="5" fill="#2A2A2E"/>
-<text x="668" y="171" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$32,400</text>
+<rect x="300" y="154" width="330" height="26" rx="5" fill="#2A2A2E"/>
+<text x="638" y="171" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$32,400</text>
 <text x="288" y="217" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Index once, query forever</text>
 <rect x="300" y="200" width="6" height="26" rx="5" fill="#E85810"/>
 <text x="314" y="217" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">one pass, then ~120 ms retrieval</text>

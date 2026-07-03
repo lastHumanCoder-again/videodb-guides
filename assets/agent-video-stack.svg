@@ -2,10 +2,10 @@
 <rect width="720" height="190" rx="12" fill="#0B0B0C"/>
 <text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">GIVING AN AGENT VIDEO PERCEPTION: STITCHED STACK VS. VIDEODB</text>
 <text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Stitched frankenstack</text>
-<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
-<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">8 services · ~6 weeks</text>
+<rect x="300" y="62" width="330" height="26" rx="5" fill="#2A2A2E"/>
+<text x="638" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">8 services · ~6 weeks</text>
 <text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB</text>
-<rect x="300" y="108" width="45" height="26" rx="5" fill="#E85810"/>
-<text x="353" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">1 API · ~5 min to first query</text>
+<rect x="300" y="108" width="41" height="26" rx="5" fill="#E85810"/>
+<text x="349" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">1 API · ~5 min to first query</text>
 <text x="40" y="176" font-size="11.5" fill="#8C8C94">Services required to ship agent video perception. Source: videodb.io.</text>
 </svg>
