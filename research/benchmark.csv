@@ -1,0 +1,4 @@
+slug,keyword,volume,kd,our_position,our_url,serp_top3
+ai-video-analysis,ai video analysis,1000,25,not in top 10,,"www.reddit.com, www.twelvelabs.io, cloud.google.com"
+do-you-need-a-video-database,video database,90,18,9,https://docs.videodb.io/pages/core-concepts/data-model,"archive.org, www.vdb.org, www.reddit.com"
+what-is-video-rag,video rag,90,37,not in top 10,,"arxiv.org, video-rag.github.io, dev.to"

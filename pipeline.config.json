@@ -1,0 +1,31 @@
+{
+  "brand": {
+    "name": "VideoDB",
+    "site": "https://videodb.io",
+    "cta_console": "https://console.videodb.io",
+    "cta_docs": "https://docs.videodb.io",
+    "tagline": "To see is to know.",
+    "canonical_terms": ["perception layer", "video understanding api", "video infrastructure for ai agents", "video rag", "agentic perception", "video database"]
+  },
+  "semrush": {
+    "database": "us",
+    "related_per_seed": 30,
+    "questions_per_seed": 15
+  },
+  "seeds": [
+    "video understanding api", "video rag", "video search", "video database",
+    "ai video analysis", "video ai agents", "rtsp stream", "video summarizer ai",
+    "vision language models", "video api", "ai camera monitoring", "video indexing"
+  ],
+  "relevance": {
+    "must_match_any": ["\\bvideo\\b", "\\bvlm", "\\brag\\b", "camera", "rtsp", "footage", "stream", "multimodal", "perception"],
+    "must_also_match_any": ["\\bai\\b", "\\bapi\\b", "agent", "llm", "\\bml\\b", "machine", "semantic", "index", "search", "rag", "understand", "analy", "detect", "monitor", "transcri", "summar", "moderat", "ocr", "database", "infrastructure", "embedding", "vector", "alternative", "\\bvs\\b", "automat"],
+    "exclude": ["porn", "download", "tiktok", "instagram", "facebook", "bing", "dailymotion", "free movie", "song", "converter to mp3", "youtube to", "wedding video", "video game", "gaming", "editor app", "capcut", "premiere pro crack"]
+  },
+  "scoring": {
+    "comment": "opportunity = Nq^0.6 * intent * winnability^2 * serp_bonus  — see README §Benchmarking",
+    "kd_easy": 20,
+    "kd_moderate": 40,
+    "top_n_briefs": 15
+  }
+}
