@@ -205,6 +205,6 @@ the Context doc. How-tos (D) each end by linking the relevant GitHub repo.
 ```bash
 cd "/Users/shivanshutripathi/Desktop/programatic seo/VideoDB_PSEO"
 python3 make_charts.py      # chart_specs/*.json -> assets/*.svg (dark brand)
-python3 build_html.py       # blogs/*.md -> site/*.html
-python3 make_listing.py     # site/index.html grouped by cluster
+python3 build_html.py       # blogs/*.md -> docs/*.html
+python3 make_listing.py     # docs/index.html grouped by cluster
 ```

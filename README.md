@@ -13,10 +13,10 @@ keyword_research_semrush.csv  # raw SEMrush export (US db, 2026-07-03)
 blogs/*.md                    # source markdown (playbook §2 format)
 chart_specs/*.json            # one dark-brand chart spec per blog
 assets/*.svg                  # rendered charts
-site/*.html                   # built pages + index.html (deployed to GitHub Pages)
+docs/*.html                   # built pages + index.html (deployed to GitHub Pages)
 make_charts.py                # chart_specs -> assets (VideoDB dark brand)
-build_html.py                 # blogs -> site (dark canvas, #E85810, Archivo Black/Inter)
-make_listing.py               # site/index.html grouped by cluster
+build_html.py                 # blogs -> docs (dark canvas, #E85810, Archivo Black/Inter)
+make_listing.py               # docs/index.html grouped by cluster
 ```
 
 ## Build

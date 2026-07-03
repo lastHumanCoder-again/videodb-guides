@@ -10,7 +10,7 @@ import re, html, json, glob, io, base64, pathlib
 import markdown as md_lib
 
 ROOT = pathlib.Path(__file__).resolve().parent
-OUT = ROOT / "site"; OUT.mkdir(exist_ok=True)
+OUT = ROOT / "docs"; OUT.mkdir(exist_ok=True)
 ASSETS = ROOT / "assets"; INCOMING = ROOT / "_incoming_assets"
 SITE = "https://videodb.io"
 DEFAULT_CTA = "https://console.videodb.io"

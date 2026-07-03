@@ -4,7 +4,7 @@ Pulls <title>/meta description from each built page. Run after build_html.py."""
 import re, html, io, pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent
-OUT = ROOT / "site"
+OUT = ROOT / "docs"
 INCOMING = ROOT / "_incoming_assets"; ASSETS_DIR = ROOT / "assets"
 THUMBS = OUT / "thumbs"
 
