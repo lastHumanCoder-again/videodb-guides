@@ -1,0 +1,6 @@
+{ "file": "video-analysis-stack-vs-videodb",
+  "title": "Shipping AI video analysis: stitched stack vs. VideoDB",
+  "rows": [["Stitched pipeline (storage + ffmpeg + speech + VLM + vectors + glue)", 8, "8 services · ~6 weeks", false],
+           ["VideoDB", 1, "1 API · ~5 min to first query", true]],
+  "footnote": "Services required to ship one video-analysis feature. Source: videodb.io.",
+  "type": "bar" }

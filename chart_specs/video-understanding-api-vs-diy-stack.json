@@ -1,0 +1,6 @@
+{ "file": "video-understanding-api-vs-diy-stack",
+  "title": "Answering moment-level questions about video: services required",
+  "rows": [["DIY stack (storage, transcode, speech, vision, vectors, metadata, streaming, glue)", 8, "8 services · 4 vendors", false],
+           ["Video understanding API (VideoDB)", 1, "1 API · ~5 min to first query", true]],
+  "footnote": "Source: videodb.io.",
+  "type": "bar" }

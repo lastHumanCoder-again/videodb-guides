@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 282" width="720" height="282" font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="282" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">ASKING QUESTIONS OF A 1,000-HOUR ARCHIVE: FRAME-BY-FRAME VLM VS. INDEXING ONCE</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 1 question</text>
+<rect x="300" y="62" width="6" height="26" rx="5" fill="#2A2A2E"/>
+<text x="314" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$324 — full re-read</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 10 questions</text>
+<rect x="300" y="108" width="36" height="26" rx="5" fill="#2A2A2E"/>
+<text x="344" y="125" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$3,240</text>
+<text x="288" y="171" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 100 questions</text>
+<rect x="300" y="154" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="171" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$32,400</text>
+<text x="288" y="217" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Index once, query forever</text>
+<rect x="300" y="200" width="6" height="26" rx="5" fill="#E85810"/>
+<text x="314" y="217" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">one pass, then ~120 ms retrieval</text>
+<text x="40" y="268" font-size="11.5" fill="#8C8C94">Derived from Gemini API pricing ($0.30/1M input tokens, ~300 tokens/s of video at default resolution, ai.google.dev). Retrieval latency: videodb.io.</text>
+</svg>

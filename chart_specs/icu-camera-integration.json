@@ -1,0 +1,6 @@
+{ "file": "icu-camera-integration",
+  "title": "Time to production: 1,000+ ICU cameras",
+  "rows": [["Stitched pipeline (first attempt)", 39, "~9 months", false],
+           ["VideoDB RTStream", 8, "8 weeks", true]],
+  "footnote": "CloudPhysician deployment, weeks to production. Source: videodb.io.",
+  "type": "bar" }

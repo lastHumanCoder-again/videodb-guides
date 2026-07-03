@@ -1,0 +1,6 @@
+{ "file": "summarization-pilot-weeks",
+  "title": "Programmable-media workflows: pilot to production (weeks)",
+  "rows": [["Traditional media pilot", 26, "~6 months", false],
+           ["On VideoDB (Hoichoi / SVF pattern)", 6, "~6 weeks", true]],
+  "footnote": "Weeks from pilot to production for catalog search and summarization/clip workflows. Source: videodb.io.",
+  "type": "bar" }

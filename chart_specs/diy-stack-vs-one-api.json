@@ -1,0 +1,10 @@
+{
+  "file": "diy-stack-vs-one-api",
+  "title": "Services you run to ship \"search inside video\"",
+  "rows": [
+    ["DIY stack (S3 + ffmpeg + Whisper + CLIP + Pinecone + Postgres + glue)", 8, "8 services · 4 vendors", false],
+    ["VideoDB", 1, "1 API", true]
+  ],
+  "footnote": "Source: videodb.io.",
+  "type": "bar"
+}

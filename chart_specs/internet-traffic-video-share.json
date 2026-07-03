@@ -1,0 +1,10 @@
+{
+  "file": "internet-traffic-video-share",
+  "title": "Video as a share of global IP traffic (2022 forecast)",
+  "rows": [
+    ["Video", 82, "82% of IP traffic", true],
+    ["Everything else", 18, "18%", false]
+  ],
+  "footnote": "Source: Cisco VNI forecast, 2017–2022 (newsroom.cisco.com).",
+  "type": "donut"
+}

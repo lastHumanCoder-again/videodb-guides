@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video LLM Costs: Frame-by-Frame vs. Indexing Once</title>
+<meta name="description" content="Sampling frames and sending each to a video LLM gets expensive fast. Real cost math for vision language models on video — and when indexing once wins.">
+<link rel="canonical" href="https://videodb.io/blog/videodb-vs-running-vlms-frame-by-frame">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Video LLMs: frame-by-frame calls vs. indexing once", "description": "Sampling frames and sending each to a video LLM gets expensive fast. Real cost math for vision language models on video \u2014 and when indexing once wins.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/videodb-vs-running-vlms-frame-by-frame"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is a video LLM?", "acceptedAnswer": {"@type": "Answer", "text": "\"Video LLM\" usually refers to a vision language model applied to video \u2014 either by sampling frames into a multimodal model (GPT-4o-style) or via video-native ingestion (Gemini, Twelve Labs). No mainstream model watches video continuously; all of them tokenize sampled frames, typically at around 1 frame per second."}}, {"@type": "Question", "name": "How many tokens is an hour of video?", "acceptedAnswer": {"@type": "Answer", "text": "On Gemini at default resolution, about 1.08M tokens (~300 tokens per second, covering frames plus audio). At low resolution it drops to ~100 tokens per second, trading visual detail for a 3-hour ceiling per request."}}, {"@type": "Question", "name": "Can GPT-4o or Claude watch a video directly?", "acceptedAnswer": {"@type": "Answer", "text": "Not as a stream. OpenAI and Anthropic vision models accept images, so video must be sampled into frames client-side and billed per image tile. Gemini accepts video files but samples them to ~1 fps internally \u2014 the frame-by-frame economics still apply."}}, {"@type": "Question", "name": "Do vision language models have memory across requests?", "acceptedAnswer": {"@type": "Answer", "text": "No. Each request is stateless; understanding exists only inside that context window. Persistent, queryable memory over video requires an external layer \u2014 that's what an index-and-memory system like VideoDB provides, with the VLM plugged in as the intelligence."}}, {"@type": "Question", "name": "Is 1 frame per second enough to catch fast events?", "acceptedAnswer": {"@type": "Answer", "text": "Often not \u2014 a fumble, a flash of on-screen text, or a safety event can pass between samples. Denser sampling raises cost linearly in a frame-by-frame pipeline. Index-based systems can sample densely once at ingest and never pay that density again per query."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "Video LLMs: frame-by-frame calls vs. indexing once", "item": "https://videodb.io/blog/videodb-vs-running-vlms-frame-by-frame"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Build vs. buy</div>
+<h1 class="vb-title">Video LLMs: frame-by-frame calls vs. indexing once</h1>
+<div class="vb-dek">For engineers who got a video demo working with GPT, Gemini, or Claude — and now need it to survive real archives and real query volume.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 8 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 282"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="282" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">ASKING QUESTIONS OF A 1,000-HOUR ARCHIVE: FRAME-BY-FRAME VLM VS. INDEXING ONCE</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 1 question</text>
+<rect x="300" y="62" width="6" height="26" rx="5" fill="#2A2A2E"/>
+<text x="314" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$324 — full re-read</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 10 questions</text>
+<rect x="300" y="108" width="36" height="26" rx="5" fill="#2A2A2E"/>
+<text x="344" y="125" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$3,240</text>
+<text x="288" y="171" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Frame-by-frame · 100 questions</text>
+<rect x="300" y="154" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="171" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">$32,400</text>
+<text x="288" y="217" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Index once, query forever</text>
+<rect x="300" y="200" width="6" height="26" rx="5" fill="#E85810"/>
+<text x="314" y="217" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">one pass, then ~120 ms retrieval</text>
+<text x="40" y="268" font-size="11.5" fill="#8C8C94">Derived from Gemini API pricing ($0.30/1M input tokens, ~300 tokens/s of video at default resolution, ai.google.dev). Retrieval latency: videodb.io.</text>
+</svg><figcaption class="vb-cap">Question N costs the same as question 1 when every query re-reads the archive; an index pays the model cost once. Source: derived from Gemini API pricing (ai.google.dev) at ~300 tokens/s of video; retrieval latency from videodb.io.</figcaption></figure></div>
+<p class="vb-intro">A <strong>video LLM</strong> pipeline usually starts the same way: sample frames from the video, send each frame (or a batch) to a vision language model, and stitch the answers together. It works, it demos well, and it quietly encodes a decision that gets expensive — every question re-reads the entire video. This piece walks through the actual cost math with stated assumptions, the latency and memory problems that arrive before the bill does, when frame-by-frame is genuinely the right call, and how the same models behave differently when they're plugged in as indexes instead of being called in a loop.</p>
+<div class="vb-ki"><div class="vb-ki-head" onclick="vbKI(this)"><div class="vb-ki-l"><div class="vb-ki-dia"></div><span class="vb-ki-lab">Key insights</span></div><span class="vb-ki-chev">&#9660;</span></div><div class="vb-ki-body"><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>The canonical loop looks like this: extract frames at some rate (commonly <strong>0.5</strong>–2 frames per second), resize them, base64-encode them, attach them to a chat completion request, and parse the text that comes back.</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>One hour of video is <strong>3,600 </strong>seconds ≈ 1.08M input tokens ≈ $0.32 per full pass.</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>VideoDB serves those lookups in ~<strong>120ms</strong> across petabyte-scale archives (videodb.io).</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>A single <strong>1</strong>-hour video at default resolution is ~1.08M tokens — at or beyond the 1M-token context window, which caps out at about one hour of default-resolution video per request (Gemini docs).</div></div></div></div>
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#what-does-running-a-vlm-frame-by-frame-actually-involve">What does running a VLM frame by frame actually involve?</a></li><li><a href="#what-does-frame-by-frame-video-analysis-cost">What does frame-by-frame video analysis cost?</a></li><li><a href="#why-do-latency-and-memory-break-before-cost-does">Why do latency and memory break before cost does?</a></li><li><a href="#when-is-frame-by-frame-the-right-call">When is frame-by-frame the right call?</a></li><li><a href="#how-does-videodb-use-the-same-models-differently">How does VideoDB use the same models differently?</a></li><li><a href="#which-model-should-you-plug-in">Which model should you plug in?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="what-does-running-a-vlm-frame-by-frame-actually-involve">What does running a VLM frame by frame actually involve?</h2>
+<p>Frame-by-frame video analysis means converting a continuous stream into a sequence of still images and paying model-inference prices for each one. There is no video-native step: the model sees pictures, and your code is responsible for sampling, batching, ordering, and reconciling the answers.</p>
+<p>The canonical loop looks like this: extract frames at some rate (commonly 0.5–2 frames per second), resize them, base64-encode them, attach them to a chat completion request, and parse the text that comes back. OpenAI's vision models bill those images as tokens using a tile calculation — a 512×512 image at high detail costs roughly 255 tokens (an 85-token base plus 170 tokens per 512-px tile) (<a href="https://developers.openai.com/api/docs/guides/images-vision" rel="noopener" target="_blank">OpenAI vision guide</a>). Gemini accepts video files directly, but under the hood it does the same thing on your behalf: it samples at 1 frame per second and charges about 300 tokens per second of video at default resolution — 258 tokens per frame plus 32 tokens of audio (<a href="https://ai.google.dev/gemini-api/docs/video-understanding" rel="noopener" target="_blank">Gemini video understanding docs</a>).</p>
+<p>Either way, the unit of work is the token, and tokens are ephemeral. Nothing about the video persists after the response arrives.</p>
+<blockquote class="vb-cta">
+<p><strong>The loop is the architecture.</strong> If your video pipeline is a <code>for</code> loop over frames, the costs below are already committed. See what the index-once pattern looks like. <a href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free →</a></p>
+</blockquote>
+<h2 id="what-does-frame-by-frame-video-analysis-cost">What does frame-by-frame video analysis cost?</h2>
+<p>For one short clip and one question, almost nothing — that is why the demo works. The problem is that cost scales with <em>video length × question count</em>, because every new question re-processes every frame.</p>
+<p>Here is the math, with assumptions stated so you can rerun it with your own numbers:</p>
+<ul>
+<li><strong>Sampling rate:</strong> 1 frame per second (Gemini's default) (<a href="https://ai.google.dev/gemini-api/docs/video-understanding" rel="noopener" target="_blank">Gemini docs</a>).</li>
+<li><strong>Tokens per second of video:</strong> ~300 at default resolution (258 frame + 32 audio) (<a href="https://ai.google.dev/gemini-api/docs/video-understanding" rel="noopener" target="_blank">Gemini docs</a>).</li>
+<li><strong>Model pricing:</strong> Gemini 2.5 Flash at <strong>$0.30 per 1M input tokens</strong> for text, image, and video (<a href="https://ai.google.dev/gemini-api/docs/pricing" rel="noopener" target="_blank">Gemini API pricing</a>). Output tokens ($2.50/1M) excluded to keep the math conservative.</li>
+</ul>
+<p>One hour of video is 3,600 seconds ≈ <strong>1.08M input tokens ≈ $0.32 per full pass</strong>. Harmless. Now scale both axes:</p>
+<ul>
+<li>A <strong>1,000-hour archive</strong> is ~1.08B input tokens. Every question that has to consider the whole archive costs <strong>~$324</strong> — per question.</li>
+<li><strong>100 questions</strong> against that archive: <strong>~$32,400</strong>. On Gemini 2.5 Pro ($2.50/1M for prompts over 200k tokens), the same workload runs ~8× higher (<a href="https://ai.google.dev/gemini-api/docs/pricing" rel="noopener" target="_blank">pricing</a>).</li>
+</ul>
+
+<p>The index-once pattern spends roughly the same as <em>one</em> frame-by-frame pass — the model still has to see the footage once — and then answers question 2 through question 10,000 from the index, at retrieval cost instead of inference cost. VideoDB serves those lookups in <strong>~120ms across petabyte-scale archives</strong> (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<h2 id="why-do-latency-and-memory-break-before-cost-does">Why do latency and memory break before cost does?</h2>
+<p>Latency fails first because a question cannot return faster than the model can re-read the footage. A single 1-hour video at default resolution is ~1.08M tokens — at or beyond the 1M-token context window, which caps out at about one hour of default-resolution video per request (<a href="https://ai.google.dev/gemini-api/docs/video-understanding" rel="noopener" target="_blank">Gemini docs</a>). Longer footage forces chunking, chunking forces parallel calls, and parallel calls force you to write the stitching logic that reconciles contradictory per-chunk answers. Your user waits minutes for what should be a lookup.</p>
+<p>Memory fails second, and more fundamentally: vision language models are stateless. Ask "when did the demo crash?" today and "what was on screen right before that?" tomorrow, and the model starts from zero both times. There is no accumulated understanding of the archive, no scoping per user or agent, no way for an agent to <em>remember</em> video between sessions. Frame-by-frame pipelines have no unit smaller than "the whole video, again" — while the useful unit is the moment (<a href="https://docs.videodb.io" rel="noopener" target="_blank">VideoDB docs</a>).</p>
+<blockquote class="vb-cta">
+<p><strong>Agents need recall, not re-reads.</strong> Give your agent scene-level memory it can query across sessions instead of a context window it refills every turn. <a href="https://console.videodb.io" rel="noopener" target="_blank">Get an API key →</a></p>
+</blockquote>
+<h2 id="when-is-frame-by-frame-the-right-call">When is frame-by-frame the right call?</h2>
+<p>For one-off questions on short clips, frame-by-frame is fine — honestly, it's the right tool. If you're analyzing a 90-second clip once, or prototyping to learn what a model can even see, an index would be overhead: a direct Gemini or GPT call is simpler, and at ~$0.32 per hour-long pass the cost is irrelevant at small scale.</p>
+<p>Frame-by-frame holds up when all three are true: the videos are short (under the context window), each video is queried once or twice ever, and nothing needs to persist. Ad-hoc clip QA, single-pass moderation checks on user uploads, and quick experiments all qualify. The pattern breaks when any axis grows — archive size, question volume, or the need for memory. If you're re-processing the same footage to answer a second question, you've crossed the line.</p>
+<h2 id="how-does-videodb-use-the-same-models-differently">How does VideoDB use the same models differently?</h2>
+<p>VideoDB doesn't replace the vision language model — it changes where the model sits. VideoDB is bring-your-own-model infrastructure: <strong>Twelve Labs, Gemini, OpenAI, Anthropic, or your own model</strong> wraps cleanly as an <em>index</em> — a reusable, additive layer of understanding over the media — rather than being invoked per question (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>). The model runs once at index time; queries hit the index thereafter. In regulated settings your model IP is never exposed.</p>
+<pre><code class="language-python">import videodb  # pip install videodb
+from videodb import SearchType
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+coll = conn.get_collection()
+video = coll.upload(url=&quot;https://example.com/keynote.mp4&quot;)
+
+# index once — the VLM you choose runs here, not per question
+video.index_spoken_words()
+video.index_scenes(prompt=&quot;Describe products, people, and on-screen text&quot;)
+
+# query forever — every hit is a playable moment, not a frame number
+results = video.search(&quot;when does the pricing slide appear?&quot;,
+                       search_type=SearchType.semantic)
+results.play()
+</code></pre>
+<p>Because indexes are additive, you can layer them: a transcript index, a Twelve Labs scene index, a custom-prompt index for your domain's events — and compose them at query time. Re-indexing with a better model later doesn't mean rebuilding the pipeline; it means adding a layer. This is the practical difference between a video LLM <em>call</em> and video infrastructure: the model is a component, not the architecture. For how search behaves on top of those indexes, see <a href="semantic-video-search-vs-keyword-search.html">semantic search vs. keyword search over video ↗</a>, and for the full stack picture, the hub on <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a>.</p>
+<blockquote class="vb-cta">
+<p><strong>Same model, one-time cost.</strong> Plug the VLM you already trust in as an index and stop paying it per question. <a href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console →</a></p>
+</blockquote>
+<h2 id="which-model-should-you-plug-in">Which model should you plug in?</h2>
+<p>Measure on your own footage, because VLM performance varies more by task than by leaderboard. VideoDB's research arm, <a href="https://labs.videodb.io" rel="noopener" target="_blank">labs.videodb.io</a>, publishes evaluations aimed at exactly this decision.</p>
+<p>Two useful data points. The <a href="https://github.com/video-db/ocr-benchmark" rel="noopener" target="_blank">ocr-benchmark</a> repo tested VLMs on text extraction across 25 videos in five categories: GPT-4o and Gemini 1.5 Pro both landed around 76% accuracy, well ahead of traditional OCR engines like RapidOCR at ~57% — evidence that VLMs-as-indexes beat classic CV pipelines for in-video text. The <a href="https://github.com/video-db/gemini-reasoning-eval" rel="noopener" target="_blank">gemini-reasoning-eval</a> repo benchmarked Gemini 2.5 Flash variants across 100 hours of video and found reasoning-quality gains plateau after roughly 300 thinking tokens — the smaller Flash Lite configuration matched or beat larger budgets while using ~30% fewer tokens. Bigger spend is not automatically better perception; a swappable model layer lets you act on that finding without re-architecting. If you're comparing this build against managed options more broadly, the <a href="videodb-vs-building-with-ffmpeg-and-a-vector-database.html">ffmpeg-plus-vector-database comparison ↗</a> covers the rest of the stack.</p>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="semantic-video-search-vs-keyword-search.html"><span>semantic search vs. keyword search over video</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="videodb-vs-building-with-ffmpeg-and-a-vector-database.html"><span>ffmpeg-plus-vector-database comparison</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is a video LLM?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">&quot;Video LLM&quot; usually refers to a vision language model applied to video — either by sampling frames into a multimodal model (GPT-4o-style) or via video-native ingestion (Gemini, Twelve Labs). No mainstream model watches video continuously; all of them tokenize sampled frames, typically at around 1 frame per second.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How many tokens is an hour of video?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">On Gemini at default resolution, about 1.08M tokens (~300 tokens per second, covering frames plus audio). At low resolution it drops to ~100 tokens per second, trading visual detail for a 3-hour ceiling per request.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can GPT-4o or Claude watch a video directly?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Not as a stream. OpenAI and Anthropic vision models accept images, so video must be sampled into frames client-side and billed per image tile. Gemini accepts video files but samples them to ~1 fps internally — the frame-by-frame economics still apply.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Do vision language models have memory across requests?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No. Each request is stateless; understanding exists only inside that context window. Persistent, queryable memory over video requires an external layer — that&#x27;s what an index-and-memory system like VideoDB provides, with the VLM plugged in as the intelligence.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Is 1 frame per second enough to catch fast events?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Often not — a fumble, a flash of on-screen text, or a safety event can pass between samples. Denser sampling raises cost linearly in a frame-by-frame pipeline. Index-based systems can sample densely once at ingest and never pay that density again per query.</div></div></div>
+<div class="vb-take"><h3>Index once. Ask forever.</h3><p>The models are good; the loop is the problem. Keep the VLM you trust, run it once as an index, and turn every question after the first into a ~120ms lookup instead of a full re-read. First query in about five minutes.</p><a class="vb-btn" href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free &#8594;</a></div>
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>Gemini API pricing — https://ai.google.dev/gemini-api/docs/pricing</li>
+<li>Gemini video understanding (tokenization, 1 fps sampling, context limits) — https://ai.google.dev/gemini-api/docs/video-understanding</li>
+<li>OpenAI images &amp; vision guide (image token calculation) — https://developers.openai.com/api/docs/guides/images-vision</li>
+<li>VideoDB OCR benchmark (VLMs vs. traditional OCR on video) — https://github.com/video-db/ocr-benchmark</li>
+<li>VideoDB Gemini reasoning evaluation (thinking tokens vs. quality) — https://github.com/video-db/gemini-reasoning-eval</li>
+<li>VideoDB Labs research — https://labs.videodb.io</li>
+<li>VideoDB (retrieval latency, bring-your-own-model) — https://videodb.io</li>
+<li>VideoDB documentation — https://docs.videodb.io</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

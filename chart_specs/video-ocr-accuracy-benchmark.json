@@ -1,0 +1,9 @@
+{ "file": "video-ocr-accuracy-benchmark",
+  "title": "OCR accuracy on video scenes: VLMs vs. traditional OCR",
+  "rows": [["GPT-4o", 76.22, "76.2%", true],
+           ["Gemini 1.5 Pro", 76.13, "76.1%", false],
+           ["Claude 3.5 Sonnet", 67.71, "67.7%", false],
+           ["RapidOCR", 56.98, "57.0%", false],
+           ["EasyOCR", 49.3, "49.3%", false]],
+  "footnote": "Accuracy vs. ground truth across 25 videos, five text categories. Source: github.com/video-db/ocr-benchmark.",
+  "type": "bar" }

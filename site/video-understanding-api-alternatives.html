@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Intelligence API Alternatives: 6 Options Compared</title>
+<meta name="description" content="An honest map of video intelligence API options — cloud vision APIs, Mux alternatives, model APIs, DIY — and how to pick the right layer for your stack.">
+<link rel="canonical" href="https://videodb.io/blog/video-understanding-api-alternatives">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Video understanding API alternatives: an honest map of the landscape", "description": "An honest map of video intelligence API options \u2014 cloud vision APIs, Mux alternatives, model APIs, DIY \u2014 and how to pick the right layer for your stack.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/video-understanding-api-alternatives"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is a video intelligence API?", "acceptedAnswer": {"@type": "Answer", "text": "Commonly, a service that analyzes video and returns structured annotations \u2014 labels, faces, text, shots \u2014 like Google Cloud Video Intelligence or AWS Rekognition. The term increasingly also covers video-native model APIs (Twelve Labs, Gemini) and full infrastructure layers (VideoDB) that add search, memory, and streaming."}}, {"@type": "Question", "name": "What is the best Mux alternative?", "acceptedAnswer": {"@type": "Answer", "text": "For pure streaming, Cloudflare Stream is the closest like-for-like alternative. If you're leaving Mux because you need understanding \u2014 search, indexing, agent access, memory \u2014 the alternative isn't another streaming API; it's an infrastructure layer like VideoDB that streams and makes content queryable."}}, {"@type": "Question", "name": "Is Google Video Intelligence better than AWS Rekognition?", "acceptedAnswer": {"@type": "Answer", "text": "They overlap heavily; the honest tiebreaker is your cloud. Rekognition is stronger on faces, identity, and media-ops segment detection; Video Intelligence has broad label/OCR/logo coverage and GCP integration. Neither provides search, memory, or playback over its results."}}, {"@type": "Question", "name": "Can I use Twelve Labs and VideoDB together?", "acceptedAnswer": {"@type": "Answer", "text": "Yes \u2014 that's the intended shape. VideoDB is bring-your-own-model infrastructure: Twelve Labs (or Gemini, OpenAI, Anthropic, or your own model) wraps as an index, and VideoDB adds persistent memory, ~120ms retrieval, editing, and streaming around it."}}, {"@type": "Question", "name": "When is building it myself the right choice?", "acceptedAnswer": {"@type": "Answer", "text": "When you have a narrow, stable pipeline, unusual constraints, and a team that wants to own the stack \u2014 or when you truly only need one piece (ffmpeg for transcoding, a streaming API for playback). Budget realistically: the stitched version of the full span typically runs ~8 services and ~6 weeks to the first feature."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "Video understanding API alternatives: an honest map of the landscape", "item": "https://videodb.io/blog/video-understanding-api-alternatives"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Build vs. buy</div>
+<h1 class="vb-title">Video understanding API alternatives: an honest map of the landscape</h1>
+<div class="vb-dek">For teams evaluating what to put under a video-AI feature — and tired of comparison pages where the vendor always wins every row.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 8 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 374"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="374" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">STAGES OF INGEST → INDEX → MEMORY → SEARCH → EDIT → STREAM COVERED (OF 6)</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Google Video Intelligence</text>
+<rect x="300" y="62" width="60" height="26" rx="5" fill="#2A2A2E"/>
+<text x="368" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">annotation only</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">AWS Rekognition</text>
+<rect x="300" y="108" width="60" height="26" rx="5" fill="#2A2A2E"/>
+<text x="368" y="125" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">annotation only</text>
+<text x="288" y="171" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Mux / Cloudflare Stream</text>
+<rect x="300" y="154" width="120" height="26" rx="5" fill="#2A2A2E"/>
+<text x="428" y="171" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">ingest + stream</text>
+<text x="288" y="217" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Twelve Labs / Gemini</text>
+<rect x="300" y="200" width="120" height="26" rx="5" fill="#2A2A2E"/>
+<text x="428" y="217" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">index + per-call analysis</text>
+<text x="288" y="263" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">DIY stitched stack</text>
+<rect x="300" y="246" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="263" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">~8 services, ~6 weeks</text>
+<text x="288" y="309" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB</text>
+<rect x="300" y="292" width="360" height="26" rx="5" fill="#E85810"/>
+<text x="668" y="309" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">one API, ~5 min to first query</text>
+<text x="40" y="360" font-size="11.5" fill="#8C8C94">Capability count across the six-stage span, per vendor documentation (see blog Sources). DIY covers the span at the cost of ~8 stitched services (videodb.io).</text>
+</svg><figcaption class="vb-cap">Stages of the ingest→index→memory→search→edit→stream span each option covers, per vendor documentation. Source: see Sources below.</figcaption></figure></div>
+<p class="vb-intro">If you're searching for a <strong>video intelligence API</strong>, you're really choosing among four different kinds of product that happen to share a keyword: cloud annotation APIs, streaming platforms, video model APIs, and full video infrastructure. Each is genuinely the best answer to a different question, and picking the wrong category costs more than picking the wrong vendor within one. This page maps all four honestly — what Google Video Intelligence, AWS Rekognition, Mux, Cloudflare Stream, Twelve Labs, and Gemini are each actually for — and states plainly where VideoDB is the differentiated choice and where it isn't.</p>
+
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#what-are-your-options-for-video-understanding">What are your options for video understanding?</a></li><li><a href="#what-are-cloud-vision-apis-actually-for">What are cloud vision APIs actually for?</a></li><li><a href="#is-mux-or-cloudflare-stream-a-video-understanding-platform">Is Mux or Cloudflare Stream a video understanding platform?</a></li><li><a href="#what-do-video-model-apis-like-twelve-labs-and-gemini-offer">What do video model APIs like Twelve Labs and Gemini offer?</a></li><li><a href="#what-does-diy-look-like-and-when-is-it-right">What does DIY look like, and when is it right?</a></li><li><a href="#how-do-the-six-options-compare">How do the six options compare?</a></li><li><a href="#when-is-videodb-the-differentiated-choice">When is VideoDB the differentiated choice?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="what-are-your-options-for-video-understanding">What are your options for video understanding?</h2>
+<p>There are four categories, and the fastest way to orient is by the question each was built to answer:</p>
+<ul>
+<li><strong>Cloud vision APIs</strong> — <em>"What's in this file?"</em> Google Cloud Video Intelligence and Amazon Rekognition annotate video with labels, faces, text, and segments.</li>
+<li><strong>Streaming APIs</strong> — <em>"How do I deliver this to viewers?"</em> Mux and Cloudflare Stream handle encoding, playback, and analytics.</li>
+<li><strong>Video model APIs</strong> — <em>"Can a model reason about this footage?"</em> Twelve Labs and Gemini expose video-native models directly.</li>
+<li><strong>DIY</strong> — <em>"Can we stitch it ourselves?"</em> S3 + ffmpeg + Whisper + a vision model + a vector database + glue.</li>
+</ul>
+<p>VideoDB sits in a fifth position: infrastructure spanning the whole job — <strong>ingest → index → memory → search → edit → stream</strong> in one API (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>). Whether that span matters depends entirely on your workload, which is what the rest of this page is for.</p>
+<h2 id="what-are-cloud-vision-apis-actually-for">What are cloud vision APIs actually for?</h2>
+<p>Google Cloud Video Intelligence and AWS Rekognition are batch annotation services: send video, get structured metadata back. They are mature, accurate on their supported tasks, and priced per minute of video analyzed.</p>
+<p><strong>Google Video Intelligence</strong> detects labels (objects, actions, places), shot boundaries, on-screen text (OCR), logos, faces, and explicit content, and transcribes speech (<a href="https://cloud.google.com/video-intelligence" rel="noopener" target="_blank">Google Cloud</a>). It's a strong fit for cataloging and moderation inside a GCP stack. <strong>AWS Rekognition</strong> leans operational: face detection and comparison for identity workflows, content moderation, in-video text extraction, and segment detection — black frames, credits, slates — built for ad-insertion and media-supply-chain automation (<a href="https://aws.amazon.com/rekognition/" rel="noopener" target="_blank">AWS</a>).</p>
+<p>Where they're strong: fixed, well-defined annotation at scale, deep IAM/billing integration with their clouds, and predictable per-minute pricing. Where they stop: the output is metadata, not a system. There's no semantic search over the results, no memory across files, no streaming of the moments you find, and no way to bring your own model. You still build the database, retrieval, and playback layers around them — they're a component in a pipeline, not the pipeline.</p>
+<h2 id="is-mux-or-cloudflare-stream-a-video-understanding-platform">Is Mux or Cloudflare Stream a video understanding platform?</h2>
+<p>No — they're delivery platforms, and excellent ones. If your search is "mux alternative," the first question is which half of Mux you're trying to replace: the streaming half or the intelligence half.</p>
+<p><strong>Mux</strong> is developer-first video streaming: upload or go live, get encoding, adaptive playback, and a polished player, with Mux Data providing engagement analytics. Its docs and SDK ergonomics are genuinely best-in-class for playback use cases, and its Mux Robots workflows now add AI tasks like caption translation, moderation, summarization, and chaptering on top (<a href="https://www.mux.com/" rel="noopener" target="_blank">mux.com</a>). <strong>Cloudflare Stream</strong> is the leaner take: serverless upload, storage, encoding, and delivery over Cloudflare's global network with one API and minimal configuration (<a href="https://developers.cloudflare.com/stream/" rel="noopener" target="_blank">Cloudflare docs</a>).</p>
+<p>If humans pressing play are your primary consumer, these are the right tools and VideoDB is not a replacement for that job. The gap appears when the consumer is software: neither platform indexes content for semantic search, maintains queryable memory across an archive, or returns moments to an agent. They answer "deliver this video," not "find and act on what's inside it." Teams often end up running a streaming API <em>and</em> an understanding stack — which is exactly the multi-vendor sprawl described in <a href="do-you-need-a-video-database.html">do you need a video database ↗</a>.</p>
+<blockquote class="vb-cta">
+<p><strong>Machines are the second audience.</strong> If agents, not just viewers, need your video, delivery alone won't cut it. See what the machine-side stack looks like. <a href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free →</a></p>
+</blockquote>
+<h2 id="what-do-video-model-apis-like-twelve-labs-and-gemini-offer">What do video model APIs like Twelve Labs and Gemini offer?</h2>
+<p>They offer the intelligence itself — video-native models over an API — and they're the strongest option when your bottleneck is model quality rather than infrastructure.</p>
+<p><strong>Twelve Labs</strong> is the specialist: its Marengo model produces multimodal embeddings for cross-modal search, and Pegasus generates text from video — summaries, answers, structured timestamped segments (<a href="https://docs.twelvelabs.io/docs/get-started/introduction" rel="noopener" target="_blank">Twelve Labs docs</a>). For dedicated video foundation models, it's arguably the state of the art. <strong>Gemini</strong> is the generalist: it ingests video directly (sampled at 1 fps, ~300 tokens per second of footage) and reasons about it inside a 1M-token context — about an hour of video per request at default resolution (<a href="https://ai.google.dev/gemini-api/docs/video-understanding" rel="noopener" target="_blank">Google</a>).</p>
+<p>Their limits are architectural, not qualitative: both are stateless per call. Long archives must be chunked, every question re-reads footage, and nothing persists between sessions — no memory, no cross-video retrieval, no playable output. The economics of that loop are worked through in <a href="videodb-vs-running-vlms-frame-by-frame.html">frame-by-frame VLM calls vs. indexing once ↗</a>. Notably, this category isn't either/or with VideoDB: Twelve Labs, Gemini, OpenAI, and Anthropic all plug into VideoDB as indexes — the model supplies understanding once; the infrastructure makes it persistent and queryable (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<h2 id="what-does-diy-look-like-and-when-is-it-right">What does DIY look like, and when is it right?</h2>
+<p>DIY means assembling the span yourself: S3 or GCS for storage, ffmpeg for transcoding, Whisper for speech, a vision model for scenes, a vector database for embeddings, Postgres for metadata, a streaming service for playback, and custom glue to orchestrate it. The typical outcome is around 8 services from 4 vendors and roughly 6 weeks to ship a single video-AI feature (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<p>It's the right call more often than vendors admit: if you have unusual constraints, an infrastructure team that wants full control, or a single narrow pipeline that will never grow, stitching is defensible — and if you only need transcoding, ffmpeg alone is fine. The cost is carrying that stack: every new capability (live feeds, a better model, clip export) is another integration, and the seams break as volume grows.</p>
+<pre><code class="language-python">import videodb  # pip install videodb — the stitched stack, as one API
+from videodb import SearchType
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+video = conn.upload(url=&quot;https://example.com/townhall.mp4&quot;)   # ingest
+
+video.index_spoken_words()                                    # index
+results = video.search(&quot;the CEO on hiring plans&quot;,             # search
+                       search_type=SearchType.semantic)
+clip = results.compile()                                      # edit
+print(clip.player_url)                                        # stream
+</code></pre>
+<blockquote class="vb-cta">
+<p><strong>Six weeks or five minutes.</strong> The stitched stack takes ~8 services to first feature; one API takes about five minutes to first query. <a href="https://console.videodb.io" rel="noopener" target="_blank">Get an API key →</a></p>
+</blockquote>
+<h2 id="how-do-the-six-options-compare">How do the six options compare?</h2>
+<p>Compare on the span of the job, not on feature checklists. The six stages a machine-consumed video system needs are ingest (files <em>and</em> live), indexing, persistent memory, search that returns playable moments, programmatic editing, and streaming out.</p>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Ingest (files + live)</th>
+<th>Index / understand</th>
+<th>Persistent memory</th>
+<th>Search → playable moment</th>
+<th>Edit</th>
+<th>Stream out</th>
+<th>Bring your own model</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Google Video Intelligence</td>
+<td>Files (+ some streaming annotation)</td>
+<td>Labels, OCR, shots, speech</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+</tr>
+<tr>
+<td>AWS Rekognition</td>
+<td>Files + live streams</td>
+<td>Faces, moderation, text, segments</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+</tr>
+<tr>
+<td>Mux</td>
+<td>Files + live</td>
+<td>Add-on AI workflows (Robots)</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-good">Yes — core strength</td>
+<td class="vb-bad">No</td>
+</tr>
+<tr>
+<td>Cloudflare Stream</td>
+<td>Files + live</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-good">Yes — core strength</td>
+<td class="vb-bad">No</td>
+</tr>
+<tr>
+<td>Twelve Labs / Gemini</td>
+<td>Files (per-call)</td>
+<td class="vb-good">Yes — the model itself</td>
+<td class="vb-bad">No — stateless per call</td>
+<td>Timestamps/segments, not playable clips</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td>They <em>are</em> the model</td>
+</tr>
+<tr>
+<td>VideoDB</td>
+<td>Files, RTSP/ONVIF/RTMP, screen capture</td>
+<td>Scenes, speech, embeddings, custom</td>
+<td class="vb-good">Yes — scoped, retention-aware</td>
+<td class="vb-good">Yes — ~120ms, every hit playable</td>
+<td class="vb-good">Yes (Director)</td>
+<td class="vb-good">Yes (HLS, WebSocket)</td>
+<td class="vb-good">Yes — TL, Gemini, OpenAI, Anthropic, or your own</td>
+</tr>
+</tbody>
+</table></div>
+
+<h2 id="when-is-videodb-the-differentiated-choice">When is VideoDB the differentiated choice?</h2>
+<p>VideoDB wins when you need the whole span in one system — when video must be ingested (including live feeds), indexed, remembered, searched, edited, and streamed back out, and the consumer is software. That's the case it was built for: one API instead of a frankenstack, ~5 minutes to first query, retrieval at ~120ms across petabyte-scale archives, live and recorded footage in the same backend, 1,000+ concurrent camera feeds in production, and cloud, VPC, or edge deployment with the same SDK (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>; <a href="https://docs.videodb.io" rel="noopener" target="_blank">docs.videodb.io</a>).</p>
+<p>Equally, when you don't need the span, you don't need VideoDB: pure playback belongs on Mux or Cloudflare Stream, a one-off moderation pass fits Rekognition, and a single question about a short clip is a Gemini call. The pattern to watch for is accumulation — the moment your roadmap includes search <em>and</em> memory <em>and</em> clips <em>and</em> maybe live feeds, the stitched alternatives converge on the 8-service build. The full architecture is laid out in the hub on <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a>.</p>
+<blockquote class="vb-cta">
+<p><strong>Pick the layer, not the logo.</strong> If the job is the whole span, try the one-API version of it before committing to the stitch. <a href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="do-you-need-a-video-database.html"><span>do you need a video database</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="videodb-vs-running-vlms-frame-by-frame.html"><span>frame-by-frame VLM calls vs. indexing once</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is a video intelligence API?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Commonly, a service that analyzes video and returns structured annotations — labels, faces, text, shots — like Google Cloud Video Intelligence or AWS Rekognition. The term increasingly also covers video-native model APIs (Twelve Labs, Gemini) and full infrastructure layers (VideoDB) that add search, memory, and streaming.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is the best Mux alternative?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">For pure streaming, Cloudflare Stream is the closest like-for-like alternative. If you&#x27;re leaving Mux because you need understanding — search, indexing, agent access, memory — the alternative isn&#x27;t another streaming API; it&#x27;s an infrastructure layer like VideoDB that streams and makes content queryable.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Is Google Video Intelligence better than AWS Rekognition?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">They overlap heavily; the honest tiebreaker is your cloud. Rekognition is stronger on faces, identity, and media-ops segment detection; Video Intelligence has broad label/OCR/logo coverage and GCP integration. Neither provides search, memory, or playback over its results.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can I use Twelve Labs and VideoDB together?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes — that&#x27;s the intended shape. VideoDB is bring-your-own-model infrastructure: Twelve Labs (or Gemini, OpenAI, Anthropic, or your own model) wraps as an index, and VideoDB adds persistent memory, ~120ms retrieval, editing, and streaming around it.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>When is building it myself the right choice?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">When you have a narrow, stable pipeline, unusual constraints, and a team that wants to own the stack — or when you truly only need one piece (ffmpeg for transcoding, a streaming API for playback). Budget realistically: the stitched version of the full span typically runs ~8 services and ~6 weeks to the first feature.</div></div></div>
+<div class="vb-take"><h3>Four categories, one question</h3><p>Annotation APIs describe files, streaming APIs deliver them, model APIs reason about them — and none of them remembers, searches, and streams the moments your software needs. If the job is the whole span, start with the system that treats it as one job.</p><a class="vb-btn" href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free &#8594;</a></div>
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>Google Cloud Video Intelligence — https://cloud.google.com/video-intelligence</li>
+<li>Amazon Rekognition — https://aws.amazon.com/rekognition/</li>
+<li>Mux — https://www.mux.com/</li>
+<li>Cloudflare Stream documentation — https://developers.cloudflare.com/stream/</li>
+<li>Twelve Labs documentation — https://docs.twelvelabs.io/docs/get-started/introduction</li>
+<li>Gemini video understanding documentation — https://ai.google.dev/gemini-api/docs/video-understanding</li>
+<li>VideoDB — https://videodb.io</li>
+<li>VideoDB documentation — https://docs.videodb.io</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

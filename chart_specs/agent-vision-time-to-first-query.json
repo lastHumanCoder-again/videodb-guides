@@ -1,0 +1,10 @@
+{
+  "file": "agent-vision-time-to-first-query",
+  "title": "Time to first working video query: stitched stack vs. VideoDB",
+  "rows": [
+    ["Stitched pipeline (8 services)", 42, "~6 weeks", false],
+    ["VideoDB (1 API)", 5, "~5 min to first query", true]
+  ],
+  "footnote": "Days to first query. Source: videodb.io.",
+  "type": "bar"
+}

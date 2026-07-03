@@ -1,0 +1,10 @@
+{
+  "file": "meeting-intelligence-stack",
+  "title": "Shipping meeting search: services required, stitched vs. VideoDB",
+  "rows": [
+    ["Stitched stack (recorder + speech + storage + vectors + glue)", 6, "6+ services", false],
+    ["VideoDB Capture SDK + index + search", 1, "1 API", true]
+  ],
+  "footnote": "Count of separate services to operate. Source: videodb.io.",
+  "type": "bar"
+}

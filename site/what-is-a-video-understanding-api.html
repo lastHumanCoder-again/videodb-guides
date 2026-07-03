@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Is a Video Understanding API? A Developer&#x27;s Guide</title>
+<meta name="description" content="What a video understanding API is, how it differs from transcription and frame sampling, the four index types, and how to query video in a few lines of Python.">
+<link rel="canonical" href="https://videodb.io/blog/what-is-a-video-understanding-api">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "What Is a Video Understanding API? A Developer's Guide", "description": "What a video understanding API is, how it differs from transcription and frame sampling, the four index types, and how to query video in a few lines of Python.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/what-is-a-video-understanding-api"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is a video understanding API the same as a transcription API?", "acceptedAnswer": {"@type": "Answer", "text": "No. A transcription API converts speech to text and stops. A video understanding API builds multiple index layers \u2014 spoken words, visual scenes, custom domain events, embeddings \u2014 over the same media and returns time-accurate, playable moments to queries. Transcription is one layer inside it."}}, {"@type": "Question", "name": "Which models power a video understanding API?", "acceptedAnswer": {"@type": "Answer", "text": "In VideoDB's case, intelligence is pluggable. Default indexing works out of the box, and you can bring Twelve Labs, Gemini, OpenAI, Anthropic, or your own model, wrapped as an index. The API is the data layer; the model is a swappable part, and private model IP stays private."}}, {"@type": "Question", "name": "How is this cheaper than running a VLM on every frame?", "acceptedAnswer": {"@type": "Answer", "text": "Frame-by-frame inference pays for every second of footage before any question is asked, and pays again per question with stateless model calls. An understanding API indexes once into persistent layers, then serves effectively unlimited queries against them, materializing clips only for matched moments."}}, {"@type": "Question", "name": "Can I search across thousands of videos at once?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Indexes live at the collection level, so one semantic query spans an entire library \u2014 VideoDB searches petabyte-scale archives with sub-second latency, and every hit returns as a playable clip (videodb.io)."}}, {"@type": "Question", "name": "What sources can be indexed?", "acceptedAnswer": {"@type": "Answer", "text": "One ingestion path covers URLs, file uploads, RTSP/ONVIF/RTMP camera feeds, RTMP streams, screen and audio capture, webhooks, and datasets. Recorded and live media are modes of the same backend."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "What Is a Video Understanding API? A Developer's Guide", "item": "https://videodb.io/blog/what-is-a-video-understanding-api"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Category explainer</div>
+<h1 class="vb-title">What Is a Video Understanding API? A Developer&#x27;s Guide</h1>
+<div class="vb-dek">For developers who need software to answer questions about footage — and want to know where transcription and frame sampling stop being enough.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 8 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">ANSWERING MOMENT-LEVEL QUESTIONS ABOUT VIDEO: SERVICES REQUIRED</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">DIY stack (storage, transcode, speech, vision, vectors, metadata, streaming, glue)</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">8 services · 4 vendors</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Video understanding API (VideoDB)</text>
+<rect x="300" y="108" width="45" height="26" rx="5" fill="#E85810"/>
+<text x="353" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">1 API · ~5 min to first query</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Source: videodb.io.</text>
+</svg><figcaption class="vb-cap">What it takes to answer "find the moment": a stitched DIY stack versus one API. Source: <a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>.</figcaption></figure></div>
+<p class="vb-intro">A <strong>video understanding API</strong> is a programmatic interface that turns raw video into structured, queryable data — transcripts, visual scenes, objects, and embeddings — so applications can search and reason over footage instead of a person watching it. Unlike a transcription API, it captures what was shown, not just what was said; unlike raw model calls on sampled frames, it returns indexed, time-accurate, playable results. This guide defines the term, contrasts the common approaches, and shows the code.</p>
+<div class="vb-ki"><div class="vb-ki-head" onclick="vbKI(this)"><div class="vb-ki-l"><div class="vb-ki-dia"></div><span class="vb-ki-lab">Key insights</span></div><span class="vb-ki-chev">&#9660;</span></div><div class="vb-ki-body"><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>The output is structured data: "the demo of the checkout flow starts at <strong>14</strong>:32 and here is a playable clip of it."</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>Vision-language models like CLIP made individual frames semantically searchable (Radford et al., arXiv:<strong>2103.00020</strong>), and it is tempting to treat a video as a folder of images.</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>The same shapes work across a whole collection — search <strong>10,000 </strong>videos as easily as one — and the SDK is open source (github.com/video-db/videodb-python).</div></div></div></div>
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#what-does-a-video-understanding-api-actually-do">What does a video understanding API actually do?</a></li><li><a href="#why-isn-t-transcription-enough">Why isn&#x27;t transcription enough?</a></li><li><a href="#why-isn-t-frame-sampling-enough">Why isn&#x27;t frame sampling enough?</a></li><li><a href="#what-are-the-index-types">What are the index types?</a></li><li><a href="#what-does-the-code-look-like">What does the code look like?</a></li><li><a href="#how-do-the-approaches-compare">How do the approaches compare?</a></li><li><a href="#where-does-it-fit-in-an-ai-stack">Where does it fit in an AI stack?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="what-does-a-video-understanding-api-actually-do">What does a video understanding API actually do?</h2>
+<p>A video understanding API does three jobs: it ingests media from any source, builds layers of machine-readable understanding over it, and answers queries with exact moments. The input is continuous media — files, live streams, screen recordings. The output is structured data: "the demo of the checkout flow starts at 14:32 and here is a playable clip of it."</p>
+<p>That last part is the defining property. A video understanding API is judged by the shape of its answers. Timestamps and transcript lines push the hard work back onto you; a playable moment is an answer. In VideoDB's data model, media is structured into reusable index layers, kept as queryable memory, and surfaced as events — the unit is the moment, not the file (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>). This is one primitive of the broader category of <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a>: the understanding layer that sits between storage below and your application or agent above.</p>
+<p>The economics explain why this became an API category at all. Assembling understanding yourself means a stack of storage, transcode, speech, vision, vectors, metadata, and glue — typically 8 services and ~6 weeks to one feature — where a single API reaches a first query in about 5 minutes (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+
+<h2 id="why-isn-t-transcription-enough">Why isn't transcription enough?</h2>
+<p>Transcription is not video understanding because most of what a video contains is never spoken. Speech models like Whisper are remarkably robust — trained on 680,000 hours of audio, they approach human accuracy on benchmarks (<a href="https://arxiv.org/abs/2212.04356" rel="noopener" target="_blank">Radford et al., arXiv:2212.04356</a>) — but a transcript of a product demo does not contain the error dialog that flashed on screen, the chart that went up and to the right, or the safety-vest violation on a factory floor. Silent footage, B-roll, CCTV, and screen recordings produce nearly empty transcripts.</p>
+<p>Transcription-only pipelines fail on a predictable class of queries: anything phrased as "show me when X happened" where X is visual. They also inherit a text-retrieval bias — you end up searching for words about the video rather than the video itself. A transcript is one excellent index layer. It is not the API.</p>
+<blockquote class="vb-cta">
+<p><strong>Your footage says more than its transcript.</strong> Index speech and scenes over the same video and query both. <a href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console →</a></p>
+</blockquote>
+<h2 id="why-isn-t-frame-sampling-enough">Why isn't frame sampling enough?</h2>
+<p>Frame sampling — extracting frames every N seconds and running an image model over each — fails on cost, continuity, and retrieval. Vision-language models like CLIP made individual frames semantically searchable (<a href="https://arxiv.org/abs/2103.00020" rel="noopener" target="_blank">Radford et al., arXiv:2103.00020</a>), and it is tempting to treat a video as a folder of images. Three problems follow:</p>
+<ul>
+<li><strong>Cost scales with duration, not with questions.</strong> An hour of video at even 1 fps is 3,600 model calls, paid before anyone asks anything. Long-context VLMs that ingest whole videos, like Gemini 1.5, still price every processed minute into every request (<a href="https://arxiv.org/abs/2403.05530" rel="noopener" target="_blank">Gemini 1.5 technical report, arXiv:2403.05530</a>).</li>
+<li><strong>Frames lose time.</strong> An action — a fall, a handoff, a goal — exists between frames. Sampled stills cannot represent events, only states.</li>
+<li><strong>You still have no retrieval.</strong> A pile of per-frame captions is not an index. You must embed, store, deduplicate, and map results back to timecodes yourself, then build clip playback on top.</li>
+</ul>
+<p>A video understanding API inverts the shape of the work: index once into durable layers, then answer unlimited queries against those layers, materializing playable clips only for the moments that match.</p>
+<h2 id="what-are-the-index-types">What are the index types?</h2>
+<p>Four index types cover most understanding work, and they are additive — layers over the same media, composable at query time (<a href="https://docs.videodb.io" rel="noopener" target="_blank">docs.videodb.io</a>):</p>
+<ol>
+<li><strong>Spoken-word indexes</strong> — time-aligned transcription of everything said, searchable by keyword or meaning.</li>
+<li><strong>Scene indexes</strong> — visual understanding of what is shown, segmented into scenes and described semantically.</li>
+<li><strong>Custom prompt-based indexes</strong> — domain-specific layers built from your own instructions ("flag forklifts near pedestrians," "note every UI error state"), using VideoDB's models or your own. Intelligence is pluggable: Twelve Labs, Gemini, OpenAI, Anthropic, or a private model wraps as an index.</li>
+<li><strong>Embedding indexes</strong> — vector representations for semantic search across everything above.</li>
+</ol>
+<p>Because layers are additive and re-indexable, understanding compounds: when a better model ships, you re-index the archive rather than rebuild the pipeline. VideoDB's research arm publishes evaluations of the underlying models — including VLM OCR benchmarks — at <a href="https://labs.videodb.io" rel="noopener" target="_blank">labs.videodb.io</a>.</p>
+<h2 id="what-does-the-code-look-like">What does the code look like?</h2>
+<p>Indexing and querying a video takes a dozen lines with the Python SDK (<code>pip install videodb</code>):</p>
+<pre><code class="language-python">import videodb
+from videodb import SearchType, IndexType
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+video = conn.upload(url=&quot;https://example.com/product-demo.mp4&quot;)
+
+# Layer 1: spoken words — what was said
+video.index_spoken_words()
+
+# Layer 2: visual scenes — what was shown
+video.index_scenes(prompt=&quot;Note any UI screens, error states, and charts&quot;)
+
+# Query the visual layer semantically
+results = video.search(
+    query=&quot;the dashboard showing a spike in errors&quot;,
+    index_type=IndexType.scene,
+    search_type=SearchType.semantic,
+)
+results.play()  # a playable clip of the exact moment
+</code></pre>
+<p>Both index layers persist, so the second question is as cheap as the first. The same shapes work across a whole collection — search 10,000 videos as easily as one — and the SDK is open source (<a href="https://github.com/video-db/videodb-python" rel="noopener" target="_blank">github.com/video-db/videodb-python</a>).</p>
+<blockquote class="vb-cta">
+<p><strong>Two index layers, one query.</strong> Run this snippet against your own footage in about five minutes. <a href="https://console.videodb.io" rel="noopener" target="_blank">Get an API key →</a></p>
+</blockquote>
+<h2 id="how-do-the-approaches-compare">How do the approaches compare?</h2>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th></th>
+<th>Transcription-only</th>
+<th>Frame sampling + VLM</th>
+<th>Long-context VLM call</th>
+<th>Video understanding API</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Captures speech</td>
+<td class="vb-good">Yes</td>
+<td class="vb-bad">No</td>
+<td class="vb-good">Yes</td>
+<td class="vb-good">Yes</td>
+</tr>
+<tr>
+<td>Captures visuals</td>
+<td class="vb-bad">No</td>
+<td>Partially (stills)</td>
+<td class="vb-good">Yes</td>
+<td class="vb-good">Yes (scenes + events)</td>
+</tr>
+<tr>
+<td>Cost model</td>
+<td>Per audio-minute</td>
+<td>Per frame, up front</td>
+<td>Per token, per question</td>
+<td>Index once, query freely</td>
+</tr>
+<tr>
+<td>Time-accurate retrieval</td>
+<td>Word-level</td>
+<td>Frame-level, DIY</td>
+<td>Weak (answers, not moments)</td>
+<td>Moment-level, built in</td>
+</tr>
+<tr>
+<td>Playable results</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-good">Yes, materialized in ms</td>
+</tr>
+<tr>
+<td>Live streams</td>
+<td>Rarely</td>
+<td class="vb-bad">No</td>
+<td class="vb-bad">No</td>
+<td class="vb-good">Yes (RTSP/RTMP ingest)</td>
+</tr>
+<tr>
+<td>Persistent memory</td>
+<td>Transcript file</td>
+<td>Your problem</td>
+<td class="vb-bad">None (stateless calls)</td>
+<td>Scoped, re-indexable</td>
+</tr>
+</tbody>
+</table></div>
+<p>The honest read of this table: if your videos are podcasts and every question is about words, a transcription pipeline is cheaper and fine. If you have one short clip and one question, a single long-context VLM call is simplest. The video understanding API wins when questions are repeated, corpora grow, visuals matter, or answers must be playable — which describes most production systems, from meeting copilots to the retrieval layer behind <a href="what-is-video-rag.html">video RAG ↗</a>.</p>
+<h2 id="where-does-it-fit-in-an-ai-stack">Where does it fit in an AI stack?</h2>
+<p>A video understanding API sits between raw media and the model that reasons. Agents call it as a tool: the LLM decides what to ask, the API grounds the answer in indexed footage, and the response carries evidence — a timestamped, playable clip. This is the pattern behind <a href="how-do-ai-agents-see-and-understand-video.html">how AI agents see and understand video ↗</a>: the model supplies reasoning, the API supplies perception and retrieval.</p>
+<p>It also changes deployment conversations. Because understanding is produced by pluggable models over a common data layer, regulated teams run the same API inside their own VPC with their own models, and consumer teams run it as managed cloud — one SDK across both (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<blockquote class="vb-cta">
+<p><strong>Perception as an API call.</strong> Give your application eyes over its footage without building the pipeline underneath. <a href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-rag.html"><span>video RAG</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="how-do-ai-agents-see-and-understand-video.html"><span>how AI agents see and understand video</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Is a video understanding API the same as a transcription API?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No. A transcription API converts speech to text and stops. A video understanding API builds multiple index layers — spoken words, visual scenes, custom domain events, embeddings — over the same media and returns time-accurate, playable moments to queries. Transcription is one layer inside it.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Which models power a video understanding API?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">In VideoDB&#x27;s case, intelligence is pluggable. Default indexing works out of the box, and you can bring Twelve Labs, Gemini, OpenAI, Anthropic, or your own model, wrapped as an index. The API is the data layer; the model is a swappable part, and private model IP stays private.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How is this cheaper than running a VLM on every frame?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Frame-by-frame inference pays for every second of footage before any question is asked, and pays again per question with stateless model calls. An understanding API indexes once into persistent layers, then serves effectively unlimited queries against them, materializing clips only for matched moments.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can I search across thousands of videos at once?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes. Indexes live at the collection level, so one semantic query spans an entire library — VideoDB searches petabyte-scale archives with sub-second latency, and every hit returns as a playable clip (videodb.io).</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What sources can be indexed?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">One ingestion path covers URLs, file uploads, RTSP/ONVIF/RTMP camera feeds, RTMP streams, screen and audio capture, webhooks, and datasets. Recorded and live media are modes of the same backend.</div></div></div>
+<div class="vb-take"><h3>The API is judged by the shape of its answers</h3><p>Transcripts answer &quot;what was said.&quot; Frames answer &quot;what a moment looked like.&quot; A video understanding API answers the question you actually had — with the exact playable moment as evidence. Index one video and ask it something.</p><a class="vb-btn" href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console &#8594;</a></div>
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>VideoDB — https://videodb.io</li>
+<li>VideoDB Documentation — https://docs.videodb.io</li>
+<li>VideoDB Python SDK — https://github.com/video-db/videodb-python</li>
+<li>VideoDB Labs (multimodal retrieval and VLM evaluation) — https://labs.videodb.io</li>
+<li>Radford et al., Robust Speech Recognition via Large-Scale Weak Supervision (Whisper) — https://arxiv.org/abs/2212.04356</li>
+<li>Radford et al., Learning Transferable Visual Models From Natural Language Supervision (CLIP) — https://arxiv.org/abs/2103.00020</li>
+<li>Gemini Team, Gemini 1.5: Unlocking multimodal understanding across millions of tokens of context — https://arxiv.org/abs/2403.05530</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

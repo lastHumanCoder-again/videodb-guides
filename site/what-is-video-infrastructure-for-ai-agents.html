@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Infrastructure for AI Agents: The Complete Guide</title>
+<meta name="description" content="Video infrastructure for AI agents, explained — why video needs its own data layer, the six primitives, the moment-level data model, and a Python quickstart.">
+<link rel="canonical" href="https://videodb.io/blog/what-is-video-infrastructure-for-ai-agents">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "What Is Video Infrastructure for AI Agents?", "description": "Video infrastructure for AI agents, explained \u2014 why video needs its own data layer, the six primitives, the moment-level data model, and a Python quickstart.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/what-is-video-infrastructure-for-ai-agents"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is the difference between video infrastructure and a video API like Mux?", "acceptedAnswer": {"@type": "Answer", "text": "A streaming video API is built for playback: it stores, transcodes, and delivers video to human viewers. Video infrastructure for AI agents is built for machine consumption: it indexes content into searchable layers, keeps moment-level memory, and returns playable answers to programmatic queries. Playback delivery is one output of the system, not its purpose."}}, {"@type": "Question", "name": "Do I need to train my own model to use video infrastructure?", "acceptedAnswer": {"@type": "Answer", "text": "No. Indexing works out of the box with VideoDB's models, and intelligence is pluggable \u2014 Twelve Labs, Gemini, OpenAI, Anthropic, or your own model wraps as an index. Teams with proprietary CV models (like Voxel in plant-floor safety) run them on VideoDB indexes without exposing model IP."}}, {"@type": "Question", "name": "Can the same infrastructure handle live streams and recorded files?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Real-time and batch are modes of the same backend. The SDK that indexes an uploaded file also ingests RTSP, ONVIF, and RTMP feeds through RTStream, at a tested scale of 1,000+ concurrent live feeds with sub-second alert latency."}}, {"@type": "Question", "name": "How is this different from S3 plus a vector database?", "acceptedAnswer": {"@type": "Answer", "text": "Storage plus vectors covers two of six primitives and leaves the hard parts \u2014 time-accurate indexing, moment materialization, memory scoping, live ingest, and streaming output \u2014 as glue code you own. A vector hit also is not an answer for video; it still has to become a playable clip, which is the part the frankenstack does worst."}}, {"@type": "Question", "name": "How long does it take to get a first search result?", "acceptedAnswer": {"@type": "Answer", "text": "About five minutes: install the SDK (pip install videodb), get an API key from the console, upload a video, index it, and search. The four-week pattern many teams follow afterward is integrate the agent loop, load-test on 10,000+ items, then scale."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "What Is Video Infrastructure for AI Agents?", "item": "https://videodb.io/blog/what-is-video-infrastructure-for-ai-agents"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Category explainer</div>
+<h1 class="vb-title">What Is Video Infrastructure for AI Agents?</h1>
+<div class="vb-dek">For developers and technical founders deciding how their agents will ingest, search, and act on video — without stitching eight services together first.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 9 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">SHIPPING ONE VIDEO-AI FEATURE: STITCHED STACK VS. VIDEODB</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Stitched pipeline (8 services, 4 vendors)</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">~6 weeks</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB (1 API)</text>
+<rect x="300" y="108" width="43" height="26" rx="5" fill="#E85810"/>
+<text x="351" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">~5 min to first query</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Source: videodb.io.</text>
+</svg><figcaption class="vb-cap">Shipping one video-AI feature: the stitched 8-service pipeline versus a single API. Source: <a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>.</figcaption></figure></div>
+<p class="vb-intro"><strong>Video infrastructure for AI agents</strong> is the data layer that lets software ingest, index, remember, search, edit, and stream video, so that agents can work with footage directly instead of a person watching it. Where a database sits under an application and answers its questions about rows, video infrastructure sits under an agent and answers its questions about moments. This page defines the category: why video needs its own infrastructure layer, what the primitives are, how the data model works, and what it looks like in code.</p>
+<div class="vb-ki"><div class="vb-ki-head" onclick="vbKI(this)"><div class="vb-ki-l"><div class="vb-ki-dia"></div><span class="vb-ki-lab">Key insights</span></div><span class="vb-ki-chev">&#9660;</span></div><div class="vb-ki-body"><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>And the whole assembly is brittle precisely where it matters: it breaks as volume grows from <strong>10 </strong>videos to 10,000.</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>The same SDK shape extends to live feeds through RTStream — camera protocols like RTSP are standardized transport (IETF RFC <strong>7826</strong>), and VideoDB treats real-time and batch as modes of the same backend.</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>The compliance posture is SOC <strong>2 </strong>Type II, ISO 27001, HIPAA-ready, and GDPR-aligned, multi-region across US, EU, and India (videodb.io).</div></div></div></div>
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#why-does-video-need-its-own-infrastructure-layer">Why does video need its own infrastructure layer?</a></li><li><a href="#what-is-the-frankenstack-and-why-does-it-break">What is the frankenstack, and why does it break?</a></li><li><a href="#what-are-the-six-primitives-of-video-infrastructure">What are the six primitives of video infrastructure?</a></li><li><a href="#how-is-video-modeled-as-data">How is video modeled as data?</a></li><li><a href="#what-does-see-understand-act-look-like-in-code">What does See → Understand → Act look like in code?</a></li><li><a href="#where-does-it-run-and-who-runs-on-it">Where does it run, and who runs on it?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="why-does-video-need-its-own-infrastructure-layer">Why does video need its own infrastructure layer?</h2>
+<p>Video needs its own infrastructure layer because it is the largest data type on the internet and the only major one that software still cannot query natively. Cisco projected that video would account for <strong>82%</strong> of all IP traffic by 2022 (<a href="https://www.cisco.com/c/en/us/solutions/collateral/executive-perspectives/annual-internet-report/white-paper-c11-741490.html" rel="noopener" target="_blank">Cisco Annual Internet Report</a>), and Sandvine measured video at <strong>65%</strong> of all internet traffic after a 24% jump in a single year (<a href="https://www.prnewswire.com/news-releases/sandvines-2023-global-internet-phenomena-report-shows-24-jump-in-video-traffic-with-netflix-volume-overtaking-youtube-301723445.html" rel="noopener" target="_blank">Sandvine Global Internet Phenomena Report</a>). Text got databases, search engines, and embeddings. Video got a play button.</p>
+<p>That mattered less when the only consumer of video was a person. Video has a second user now: machines. Agents, copilots, camera systems, and world models increasingly consume video as context — and none of them can press play. The existing stack (storage, transcoding, CDN streaming) was built to deliver pixels to a human eyeball, which is why three eras are worth naming:</p>
+<ul>
+<li><strong>Then</strong> — infrastructure built for playback: store a file, transcode it, stream it to a person.</li>
+<li><strong>Now</strong> — machines as users: agents and systems need video as structured, queryable, actionable context.</li>
+<li><strong>Next</strong> — one unified layer across files, streams, cameras, screens, and datasets (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</li>
+</ul>
+<p>An agent asking "did anyone block the fire exit last Tuesday?" is not a playback problem. It is a data problem, and it needs data infrastructure.</p>
+<h2 id="what-is-the-frankenstack-and-why-does-it-break">What is the frankenstack, and why does it break?</h2>
+<p>The frankenstack is the six-to-eight-tool pipeline teams assemble today to make video usable for AI: S3 or GCS for storage, ffmpeg for transcoding, Mux or Cloudflare for streaming, Whisper for speech, CLIP or a VLM for vision, Pinecone for vectors, Postgres for metadata, and custom glue to orchestrate it all. The typical result is <strong>8 services, 4 vendors, and ~6 weeks</strong> to ship a single video-AI feature (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<p>Each seam is a failure mode. Timestamps drift between the transcript store and the vector store. A "search hit" comes back as a float offset in Postgres, and turning it into something watchable means another round through ffmpeg and the streaming vendor. Live camera feeds need an entirely parallel pipeline from recorded files. And the whole assembly is brittle precisely where it matters: it breaks as volume grows from 10 videos to 10,000.</p>
+<p>Video infrastructure for AI agents collapses that into one backend: <strong>1 API, 1 mental model, ~5 minutes to first query</strong> (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>). To be fair about trade-offs: if all you need is transcoding, ffmpeg alone is fine, and if you only need playback delivery, a streaming API is the right tool. The consolidation earns its keep when agents need to search, remember, and act on the content itself.</p>
+
+<blockquote class="vb-cta">
+<p><strong>Mid-frankenstack right now?</strong> Point one API at the same footage and run your first semantic query in about five minutes. <a href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console →</a></p>
+</blockquote>
+<h2 id="what-are-the-six-primitives-of-video-infrastructure">What are the six primitives of video infrastructure?</h2>
+<p>Six composable primitives cover the whole job, with the same SDK across files, live streams, cameras, screen capture, and datasets (<a href="https://docs.videodb.io" rel="noopener" target="_blank">docs.videodb.io</a>). Use one or use all:</p>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th>Primitive</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Ingest</strong></td>
+<td>One normalized path for URL, upload, RTSP, ONVIF, RTMP, screen + audio capture, webhooks, and datasets</td>
+</tr>
+<tr>
+<td><strong>Index</strong></td>
+<td>Reusable, additive layers over media — scenes, speech, objects, embeddings, brands, custom domain events</td>
+</tr>
+<tr>
+<td><strong>Memory</strong></td>
+<td>Scene-level memory across sessions and archives; re-indexable forever; scoped per user, agent, or fleet</td>
+</tr>
+<tr>
+<td><strong>Search</strong></td>
+<td>Sub-second semantic + structured search at petabyte scale; every hit is a playable clip, not a timestamp</td>
+</tr>
+<tr>
+<td><strong>Director</strong></td>
+<td>The agentic editing SDK — cut, compose, dub, subtitle, and brand by code (<a href="https://github.com/video-db/Director" rel="noopener" target="_blank">github.com/video-db/Director</a>)</td>
+</tr>
+<tr>
+<td><strong>RTStream</strong></td>
+<td>Real-time perception and output: HLS, WebSocket, and agent-callable URLs at 1,000+ live-feed scale</td>
+</tr>
+</tbody>
+</table></div>
+<p>One design decision runs through all six: intelligence is pluggable. VideoDB is the data layer, not the model — you bring Twelve Labs, Gemini, OpenAI, Anthropic, or your own model, and it wraps cleanly as an index. In regulated or monitoring settings, your model IP is never exposed. The infrastructure orchestrates and structures; it does not compete to be the best single model.</p>
+<h2 id="how-is-video-modeled-as-data">How is video modeled as data?</h2>
+<p>The data model is <strong>Media → Indexes → Memory → Events</strong>, and the unit is the moment, not the file.</p>
+<ul>
+<li><strong>Media</strong> is the source — anything continuous: a file, a stream, a session.</li>
+<li><strong>Indexes</strong> are reusable layers of understanding built over media — from VideoDB's models or your own — composable at query time. A deeper treatment of index types lives in the <a href="what-is-a-video-understanding-api.html">video understanding API explainer ↗</a>.</li>
+<li><strong>Memory</strong> is what you keep: scoped, retention-aware, and re-indexable as models improve. This is what turns a stateless model call into <a href="what-is-a-perception-layer.html">a perception layer with memory ↗</a>.</li>
+<li><strong>Events</strong> are what you act on — discrete moments carrying context, evidence, and a playable clip.</li>
+</ul>
+<p>The moment-as-unit decision has practical consequences. Retrieval returns a playable clip materialized in milliseconds rather than a transcript line you then have to locate in a file. It is also why retrieval-augmented pipelines over footage — covered in <a href="what-is-video-rag.html">the video RAG explainer ↗</a> — behave differently from their text counterparts: the thing you retrieve is watchable evidence, not a paragraph.</p>
+<blockquote class="vb-cta">
+<p><strong>The unit is the moment, not the file.</strong> Run a search where every result comes back playable. <a href="https://console.videodb.io" rel="noopener" target="_blank">Get an API key →</a></p>
+</blockquote>
+<h2 id="what-does-see-understand-act-look-like-in-code">What does See → Understand → Act look like in code?</h2>
+<p>The operating loop of the platform is See → Understand → Act: capture media from files, desktops, cameras, or live streams; build indexes over it; then query, search, edit, and fire events. The whole loop is a few lines of Python (<a href="https://docs.videodb.io" rel="noopener" target="_blank">docs.videodb.io</a>):</p>
+<pre><code class="language-python"># pip install videodb
+import videodb
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+coll = conn.get_collection()
+
+# See: ingest from a URL (uploads, RTSP feeds, and screen capture work the same way)
+video = coll.upload(url=&quot;https://example.com/all-hands-recording.mp4&quot;)
+
+# Understand: build two index layers over the same media
+video.index_spoken_words()                                        # speech layer
+video.index_scenes(prompt=&quot;Describe the activity in each scene&quot;)  # visual layer
+
+# Act: ask for the moment, get back a playable clip
+results = video.search(&quot;when the team discusses the Q3 roadmap&quot;)
+stream_url = results.play()
+</code></pre>
+<p>The same SDK shape extends to live feeds through RTStream — camera protocols like RTSP are standardized transport (<a href="https://datatracker.ietf.org/doc/html/rfc7826" rel="noopener" target="_blank">IETF RFC 7826</a>), and VideoDB treats real-time and batch as modes of the same backend. The Python SDK is open source (<a href="https://github.com/video-db/videodb-python" rel="noopener" target="_blank">github.com/video-db/videodb-python</a>), alongside roughly thirty public repositories of reference agents and workflows.</p>
+<h2 id="where-does-it-run-and-who-runs-on-it">Where does it run, and who runs on it?</h2>
+<p>Deployment follows the data. The same SDK runs three ways: managed cloud for speed, a customer's own cloud/VPC for regulated buyers (single-tenant, customer-managed keys), and edge+cloud for large camera fleets. The compliance posture is SOC 2 Type II, ISO 27001, HIPAA-ready, and GDPR-aligned, multi-region across US, EU, and India (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<p>Four markets run on the same primitives in production today:</p>
+<ol>
+<li><strong>Agentic perception</strong> — giving agents eyes, ears, and memory: meeting agents, pair-programmer agents, browser agents (Docket, Wisdocity).</li>
+<li><strong>Real-time monitoring</strong> — continuous perception for cameras and live ops: CloudPhysician runs 1,000+ ICU cameras with sub-second clinical alerts; Voxel runs plant-floor safety with its own CV models kept private.</li>
+<li><strong>Programmable media</strong> — catalogs made queryable and editable by code: Hoichoi and SVF run catalog search and AI clip factories over 2,500 hours of premium content.</li>
+<li><strong>Training data</strong> — the petabyte-scale data layer for world-model and robotics labs, with provenance and reproducible exports.</li>
+</ol>
+<p>That spread is the argument for the category: four buyers with almost nothing in common, one data model underneath.</p>
+<blockquote class="vb-cta">
+<p><strong>Four markets, one backend.</strong> Whatever you are building on video, the first query is minutes away. <a href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="what-is-a-video-understanding-api.html"><span>video understanding API explainer</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-a-perception-layer.html"><span>a perception layer with memory</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-rag.html"><span>the video RAG explainer</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is the difference between video infrastructure and a video API like Mux?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">A streaming video API is built for playback: it stores, transcodes, and delivers video to human viewers. Video infrastructure for AI agents is built for machine consumption: it indexes content into searchable layers, keeps moment-level memory, and returns playable answers to programmatic queries. Playback delivery is one output of the system, not its purpose.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Do I need to train my own model to use video infrastructure?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No. Indexing works out of the box with VideoDB&#x27;s models, and intelligence is pluggable — Twelve Labs, Gemini, OpenAI, Anthropic, or your own model wraps as an index. Teams with proprietary CV models (like Voxel in plant-floor safety) run them on VideoDB indexes without exposing model IP.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can the same infrastructure handle live streams and recorded files?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes. Real-time and batch are modes of the same backend. The SDK that indexes an uploaded file also ingests RTSP, ONVIF, and RTMP feeds through RTStream, at a tested scale of 1,000+ concurrent live feeds with sub-second alert latency.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How is this different from S3 plus a vector database?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Storage plus vectors covers two of six primitives and leaves the hard parts — time-accurate indexing, moment materialization, memory scoping, live ingest, and streaming output — as glue code you own. A vector hit also is not an answer for video; it still has to become a playable clip, which is the part the frankenstack does worst.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How long does it take to get a first search result?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">About five minutes: install the SDK (pip install videodb), get an API key from the console, upload a video, index it, and search. The four-week pattern many teams follow afterward is integrate the agent loop, load-test on 10,000+ items, then scale.</div></div></div>
+<div class="vb-take"><h3>Video has a second user now: machines</h3><p>Most of the internet is video, and the fastest-growing consumers of it cannot press play. Video infrastructure for AI agents is the layer that turns footage into something software can query, remember, and act on — one API instead of eight services. To see is to know.</p><a class="vb-btn" href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console &#8594;</a></div>
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>Cisco Annual Internet Report (2018–2023) White Paper — https://www.cisco.com/c/en/us/solutions/collateral/executive-perspectives/annual-internet-report/white-paper-c11-741490.html</li>
+<li>Sandvine Global Internet Phenomena Report 2023 (press release) — https://www.prnewswire.com/news-releases/sandvines-2023-global-internet-phenomena-report-shows-24-jump-in-video-traffic-with-netflix-volume-overtaking-youtube-301723445.html</li>
+<li>VideoDB — https://videodb.io</li>
+<li>VideoDB Documentation — https://docs.videodb.io</li>
+<li>Director: agent framework and editing SDK — https://github.com/video-db/Director</li>
+<li>VideoDB Python SDK — https://github.com/video-db/videodb-python</li>
+<li>IETF RFC 7826: Real-Time Streaming Protocol (RTSP) 2.0 — https://datatracker.ietf.org/doc/html/rfc7826</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

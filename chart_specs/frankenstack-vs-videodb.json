@@ -1,0 +1,6 @@
+{ "file": "frankenstack-vs-videodb",
+  "title": "Shipping one video-AI feature: stitched stack vs. VideoDB",
+  "rows": [["Stitched pipeline (8 services, 4 vendors)", 42, "~6 weeks", false],
+           ["VideoDB (1 API)", 5, "~5 min to first query", true]],
+  "footnote": "Source: videodb.io.",
+  "type": "bar" }

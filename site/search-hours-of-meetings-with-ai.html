@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Meeting Notes Without Bots: Search Months of Meetings</title>
+<meta name="description" content="Build AI meeting notes without bots: capture screen and audio with the Capture SDK, index spoken words, and search months of meetings for playable moments.">
+<link rel="canonical" href="https://videodb.io/blog/search-hours-of-meetings-with-ai">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Search hours of meetings with AI \u2014 no bot in the room", "description": "Build AI meeting notes without bots: capture screen and audio with the Capture SDK, index spoken words, and search months of meetings for playable moments.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/search-hours-of-meetings-with-ai"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "Is this meeting transcription accurate enough for notes?", "acceptedAnswer": {"@type": "Answer", "text": "Spoken-word indexing is built on modern speech models of the Whisper generation and returns timestamped text designed for retrieval. The practical safeguard is structural: every extracted note links to the playable moment, so verification is one click rather than a transcript hunt."}}, {"@type": "Question", "name": "Do participants know they are being recorded?", "acceptedAnswer": {"@type": "Answer", "text": "Nothing appears in the meeting roster, so disclosure is your application's responsibility. Treat consent UX as a launch requirement, not an afterthought \u2014 the legal duty is unchanged whether the recorder is a bot or a desktop client."}}, {"@type": "Question", "name": "Can I search meetings I recorded before adopting this?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Upload historical recordings into the collection and run index_spoken_words() over the backlog; old and new meetings become one searchable archive."}}, {"@type": "Question", "name": "How is this different from Zoom's or Meet's built-in AI notes?", "acceptedAnswer": {"@type": "Answer", "text": "Built-ins summarize one meeting inside one platform. This pipeline is cross-platform, API-first, and cumulative: months of meetings across every tool become a single queryable memory your own product or agent can call."}}, {"@type": "Question", "name": "What does an agent get from this compared to a transcript file?", "acceptedAnswer": {"@type": "Answer", "text": "A tool result, not a document: matched moments with video ID, start, end, text, and a stream URL. An agent can quote the decision, cite the timestamp, and hand a human the clip \u2014 the same shape used across VideoDB's agent examples."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "Search hours of meetings with AI \u2014 no bot in the room", "item": "https://videodb.io/blog/search-hours-of-meetings-with-ai"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Developer guide</div>
+<h1 class="vb-title">Search hours of meetings with AI — no bot in the room</h1>
+<div class="vb-dek">For developers building meeting intelligence into their product, and for teams tired of a &quot;notetaker&quot; joining every call.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 9 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">SHIPPING MEETING SEARCH: SERVICES REQUIRED, STITCHED VS. VIDEODB</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Stitched stack (recorder + speech + storage + vectors + glue)</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">6+ services</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB Capture SDK + index + search</text>
+<rect x="300" y="108" width="60" height="26" rx="5" fill="#E85810"/>
+<text x="368" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">1 API</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Count of separate services to operate. Source: videodb.io.</text>
+</svg><figcaption class="vb-cap">Shipping meeting search yourself: recorder, speech model, storage, vector DB, player, glue — vs. one API. Source: <a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>.</figcaption></figure></div>
+<p class="vb-intro">You search hours of meetings by capturing them at the desktop — screen, microphone, and system audio, no bot participant — indexing every spoken word, and querying the whole archive semantically. <strong>AI meeting notes</strong> built this way return more than a summary: every decision comes back as a playable moment with a timestamp, so "when did we agree to drop the Q3 feature?" resolves to the 40 seconds where it happened. This tutorial builds that pipeline end to end on VideoDB, the <a href="/blog/what-is-video-infrastructure-for-ai-agents">video infrastructure layer for AI agents ↗</a>, and closes with an honest comparison against bot-based note-takers.</p>
+
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#what-will-you-build">What will you build?</a></li><li><a href="#how-do-you-build-botless-meeting-search-five-steps">How do you build botless meeting search? Five steps</a></li><li><a href="#how-does-this-compare-to-bot-based-note-takers">How does this compare to bot-based note-takers?</a></li><li><a href="#what-should-you-know-before-production">What should you know before production?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="what-will-you-build">What will you build?</h2>
+<p>A meeting memory system with three properties:</p>
+<ol>
+<li><strong>Botless capture</strong> — recording happens on your machine via the Capture SDK (screen, mic, and system audio as separate channels), so it works across Zoom, Meet, Teams, and calls that never touched a calendar.</li>
+<li><strong>Meeting transcription as an index, not a document</strong> — spoken words become a searchable layer with timestamps, not a wall of text.</li>
+<li><strong>Semantic search across months</strong> — one query spans every meeting in the collection and returns playable evidence.</li>
+</ol>
+<p>The reference implementation for this pattern is <a href="https://github.com/video-db/call.md" rel="noopener" target="_blank">call.md</a>, VideoDB's open-source desktop app that records, transcribes, and analyzes meetings with live AI assistance — worth reading alongside this guide.</p>
+<p><strong>Prerequisites:</strong> Python 3.8+, a VideoDB API key (free tier), <code>pip install videodb</code>, and — for live capture — the <a href="https://github.com/video-db/videodb-capture-quickstart" rel="noopener" target="_blank">Capture SDK quickstart</a>, which ships minimal Node.js and Python starters. If you only have existing recordings, you can skip capture and start at Step 3.</p>
+<blockquote class="vb-cta">
+<p><strong>The Capture SDK has its own quickstart.</strong> Session tokens, channel setup, and event delivery are documented end to end. <a href="https://docs.videodb.io" rel="noopener" target="_blank">Read the docs →</a></p>
+</blockquote>
+<h2 id="how-do-you-build-botless-meeting-search-five-steps">How do you build botless meeting search? Five steps</h2>
+<h3>Step 1 — Set up capture sessions</h3>
+<p>The Capture SDK uses a small backend-plus-client split: your backend creates a session and mints a short-lived client token; the desktop client streams media without ever holding your API key (<a href="https://github.com/video-db/videodb-capture-quickstart" rel="noopener" target="_blank">videodb-capture-quickstart</a>).</p>
+<pre><code class="language-python">import videodb
+
+conn = videodb.connect()               # server side, holds the API key
+coll = conn.get_collection()
+
+session = conn.create_capture_session(user_id=&quot;shiv&quot;)
+token = session.generate_client_token()   # hand this to the desktop client
+</code></pre>
+<p>The client then opens the channels you ask for — screen, microphone, system audio. System audio is the piece DIY approaches miss: it is how you record the <em>other</em> side of a call without joining it as a participant.</p>
+<h3>Step 2 — Capture a meeting</h3>
+<p>On the desktop side (the quickstart provides this scaffolding), a capture session streams during the meeting and lands in your collection as media when it ends. No participant named "Notetaker" appears in the roster; nothing depends on the meeting platform's bot API. This is the same capture surface that powers pair-programmer agents and <a href="desktop-capture-for-coding-agents.html">desktop-aware coding assistants ↗</a>, so the investment reuses beyond meetings.</p>
+<p>If you have historical recordings instead, ingestion is one call:</p>
+<pre><code class="language-python">video = coll.upload(file_path=&quot;all-hands-2026-06-12.mp4&quot;)
+</code></pre>
+<h3>Step 3 — Index spoken words</h3>
+<pre><code class="language-python">video.index_spoken_words()
+</code></pre>
+<p>That single call is the entire transcription pipeline. Under the hood this is the job you would otherwise self-host with a speech model such as OpenAI's Whisper, a general-purpose open-source speech recognition model (<a href="https://github.com/openai/whisper" rel="noopener" target="_blank">github.com/openai/whisper</a>) — plus the parts Whisper does not do: storage, timestamps aligned to playable media, and a search index over the result. Indexing is additive and re-runnable, so a year of backlog can be indexed once and queried forever.</p>
+<h3>Step 4 — Search months of meetings in one query</h3>
+<p>Search at the collection level, not per file:</p>
+<pre><code class="language-python">result = coll.search(
+    query=&quot;when did we decide to drop the Q3 pricing experiment?&quot;,
+    index_type=&quot;spoken_word&quot;,
+    search_type=&quot;semantic&quot;,
+)
+
+for shot in result.get_shots():
+    print(shot.video_id, shot.start, shot.end, shot.text)
+
+print(result.play_stream())   # the decision moments, playable
+</code></pre>
+<p>Semantic search means the query does not need the words that were actually said — "drop the pricing experiment" matches "let's kill the A/B on the new tiers." Every hit is a moment with a start and end, materialized as a playable clip in milliseconds; retrieval runs at roughly ~120 ms even across very large archives (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</p>
+<h3>Step 5 — Turn moments into notes, tickets, and agents</h3>
+<p>Structured moments compose into whatever "notes" means in your product:</p>
+<pre><code class="language-python">decisions = [
+    {&quot;text&quot;: s.text, &quot;at&quot;: s.start, &quot;clip&quot;: result.play_stream()}
+    for s in result.get_shots()
+]
+# → render as AI meeting notes, push to your ticket tracker,
+#   or return as a tool result to an agent
+</code></pre>
+<p>call.md demonstrates the agentic end state: live assistance during the call, multi-part summaries after it, and MCP-triggered tools — with exports into n8n and Zapier workflows (<a href="https://github.com/video-db/call.md" rel="noopener" target="_blank">call.md</a>). Because the archive is queryable, the same data also feeds <a href="video-rag-tutorial.html">video RAG ↗</a>: an agent that cites the meeting where a decision happened, with a link that plays it.</p>
+<blockquote class="vb-cta">
+<p><strong>Decision moments with playable evidence.</strong> That is the difference between a summary you trust and a summary you re-watch the call to verify. <a href="https://docs.videodb.io" rel="noopener" target="_blank">See the quickstart →</a></p>
+</blockquote>
+<h2 id="how-does-this-compare-to-bot-based-note-takers">How does this compare to bot-based note-takers?</h2>
+<p>Bot-based tools (the familiar meeting-notes SaaS pattern) join the call as a participant, record server-side, and email a summary. Honest comparison:</p>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Bot note-taker</th>
+<th>Capture-based (this guide)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Presence in call</td>
+<td>Visible participant; joins via platform API</td>
+<td class="vb-bad">None; records at your desktop</td>
+</tr>
+<tr>
+<td>Coverage</td>
+<td>Calendar meetings on supported platforms</td>
+<td>Any audio/video on the machine — huddles, ad-hoc calls, demos</td>
+</tr>
+<tr>
+<td>Screen content</td>
+<td>Usually audio/speech only</td>
+<td>Screen is a first-class channel</td>
+</tr>
+<tr>
+<td>Output</td>
+<td>Summary document</td>
+<td>Indexed archive + summaries; every claim playable</td>
+</tr>
+<tr>
+<td>Search</td>
+<td>Within their app, per meeting</td>
+<td>One semantic query across months, via API</td>
+</tr>
+<tr>
+<td>Build-your-own</td>
+<td>Closed SaaS</td>
+<td>SDK primitives; it is <em>your</em> product</td>
+</tr>
+</tbody>
+</table></div>
+<p>Where bots genuinely win: they capture the call even when your machine is off, they can operate organization-wide without desktop software, and mature vendors ship polished speaker-identification and CRM integrations out of the box. If you want a finished notes app for a sales team and have no engineering appetite, a bot product is the pragmatic buy.</p>
+<p>The capture approach wins when you are <em>building</em> — a meeting feature inside your own product, an agent that needs meeting memory as a tool, or a team that finds a bot in every candidate interview and customer call unacceptable. And structurally: a bot pipeline produces documents, while an indexed archive produces data. Only one of those can answer a question it was not summarized for.</p>
+
+<blockquote class="vb-cta">
+<p><strong>Your meetings, your API.</strong> Capture, transcription, and search are primitives you compose — not a SaaS you embed. <a href="https://docs.videodb.io" rel="noopener" target="_blank">Read the docs →</a></p>
+</blockquote>
+<h2 id="what-should-you-know-before-production">What should you know before production?</h2>
+<p><strong>Consent is a product feature.</strong> Recording laws vary by jurisdiction (one-party vs. all-party consent). Botless does not mean silent — build the disclosure into your UX, and scope retention windows per workspace. VideoDB's memory is retention-aware for exactly this.</p>
+<p><strong>Scope collections per user or team.</strong> Meeting archives are sensitive by default. Use per-user or per-workspace collections so search boundaries match permission boundaries.</p>
+<p><strong>Index visuals when screens matter.</strong> <code>index_spoken_words()</code> covers the conversation; adding a scene index over the screen channel makes shared slides and demos searchable too ("the dashboard we saw in the vendor demo").</p>
+<p><strong>Data control:</strong> capture-based pipelines can run against your own VPC deployment when meeting content cannot leave your infrastructure — a hard blocker with most hosted bot vendors.</p>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="desktop-capture-for-coding-agents.html"><span>desktop-aware coding assistants</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="video-rag-tutorial.html"><span>video RAG</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Is this meeting transcription accurate enough for notes?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Spoken-word indexing is built on modern speech models of the Whisper generation and returns timestamped text designed for retrieval. The practical safeguard is structural: every extracted note links to the playable moment, so verification is one click rather than a transcript hunt.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Do participants know they are being recorded?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Nothing appears in the meeting roster, so disclosure is your application&#x27;s responsibility. Treat consent UX as a launch requirement, not an afterthought — the legal duty is unchanged whether the recorder is a bot or a desktop client.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can I search meetings I recorded before adopting this?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes. Upload historical recordings into the collection and run index_spoken_words() over the backlog; old and new meetings become one searchable archive.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How is this different from Zoom&#x27;s or Meet&#x27;s built-in AI notes?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Built-ins summarize one meeting inside one platform. This pipeline is cross-platform, API-first, and cumulative: months of meetings across every tool become a single queryable memory your own product or agent can call.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What does an agent get from this compared to a transcript file?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">A tool result, not a document: matched moments with video ID, start, end, text, and a stream URL. An agent can quote the decision, cite the timestamp, and hand a human the clip — the same shape used across VideoDB&#x27;s agent examples.</div></div></div>
+
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>call.md, meetings-to-agents reference app (GitHub) — https://github.com/video-db/call.md</li>
+<li>VideoDB Capture SDK quickstart (GitHub) — https://github.com/video-db/videodb-capture-quickstart</li>
+<li>VideoDB documentation — https://docs.videodb.io</li>
+<li>VideoDB — https://videodb.io</li>
+<li>OpenAI Whisper (GitHub) — https://github.com/openai/whisper</li>
+<li>Model Context Protocol — https://modelcontextprotocol.io</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

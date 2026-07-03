@@ -1,0 +1,6 @@
+{ "file": "moderation-human-review-volume",
+  "title": "Share of content volume reaching human reviewers",
+  "rows": [["Manual-first moderation", 100, "100% of volume", false],
+           ["ML-first triage (flagged queue)", 5, "~1–5% of volume", true]],
+  "footnote": "Percent of total content volume routed to human review. Source: AWS Rekognition documentation.",
+  "type": "bar" }

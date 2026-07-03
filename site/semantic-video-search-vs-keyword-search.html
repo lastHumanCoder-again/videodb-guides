@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Semantic Video Search vs. Keyword Search, Explained</title>
+<meta name="description" content="Semantic video search finds meaning; keyword search finds exact words. How embeddings and scene indexes work, why every hit should be a playable moment.">
+<link rel="canonical" href="https://videodb.io/blog/semantic-video-search-vs-keyword-search">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Semantic video search vs. keyword search: which one finds the moment?", "description": "Semantic video search finds meaning; keyword search finds exact words. How embeddings and scene indexes work, why every hit should be a playable moment.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/semantic-video-search-vs-keyword-search"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is semantic video search?", "acceptedAnswer": {"@type": "Answer", "text": "Search that retrieves video moments by meaning rather than exact words. Queries and video scenes are embedded as vectors in a shared space; results are the scenes closest in meaning to the query \u2014 including visual moments no transcript contains."}}, {"@type": "Question", "name": "How is AI video search different from a video search engine like YouTube's?", "acceptedAnswer": {"@type": "Answer", "text": "Platform search engines mostly rank whole videos by title, description, and engagement metadata. AI video search operates inside the footage: it indexes speech and scenes so a query resolves to the exact moment within a video, not to a watch page."}}, {"@type": "Question", "name": "Is semantic search always better than keyword search?", "acceptedAnswer": {"@type": "Answer", "text": "No. Keyword search is more reliable for exact strings \u2014 names, part numbers, legal phrases \u2014 and cheaper to index. Semantic search is better for paraphrase, discovery, and visual content. Production systems compose both against the same media."}}, {"@type": "Question", "name": "Do I need a vector database to build semantic video search?", "acceptedAnswer": {"@type": "Answer", "text": "If you build it yourself, yes \u2014 plus transcription, a vision model, an embedding model, and storage glue. A video database like VideoDB ships the embedding, indexing, and retrieval layers behind one API, with the model swappable."}}, {"@type": "Question", "name": "How fast can semantic video search be?", "acceptedAnswer": {"@type": "Answer", "text": "Retrieval itself is a vector lookup and can be very fast: VideoDB serves results in ~120ms across petabyte-scale archives, with every hit materialized as a playable clip rather than a timestamp (videodb.io)."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "Semantic video search vs. keyword search: which one finds the moment?", "item": "https://videodb.io/blog/semantic-video-search-vs-keyword-search"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Build vs. buy</div>
+<h1 class="vb-title">Semantic video search vs. keyword search: which one finds the moment?</h1>
+<div class="vb-dek">For developers deciding how search should work in a video product — and why the answer is usually &quot;both, returning playable moments.&quot;</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 8 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">TIME FROM QUERY TO PLAYABLE MOMENT (SECONDS)</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Conventional pipeline (search → seek → cut clip)</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">~12 s</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB semantic search</text>
+<rect x="300" y="108" width="6" height="26" rx="5" fill="#E85810"/>
+<text x="314" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">~120 ms — hit is a playable clip</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Source: videodb.io — 100× faster retrieval, ~120 ms across petabyte-scale archives.</text>
+</svg><figcaption class="vb-cap">From query to a watchable clip: a stitched search-seek-cut pipeline versus retrieval that materializes the moment. Source: videodb.io.</figcaption></figure></div>
+<p class="vb-intro"><strong>Semantic video search</strong> retrieves moments by meaning: a query like "customer gets frustrated about pricing" finds the scene even if nobody in it says those words. Keyword search retrieves moments by exact text match against a transcript. They fail in opposite ways, they're built from different primitives — embeddings and scene indexes versus transcript grep — and a serious video search engine needs both. This piece defines each, shows how semantic search over video actually works, and makes one argument that matters more than either: a search hit should be a playable moment, not a timestamp.</p>
+<div class="vb-ki"><div class="vb-ki-head" onclick="vbKI(this)"><div class="vb-ki-l"><div class="vb-ki-dia"></div><span class="vb-ki-lab">Key insights</span></div><span class="vb-ki-chev">&#9660;</span></div><div class="vb-ki-body"><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>It is precise: searching a <strong>4</strong>-hour deposition for "exhibit 14" finds exactly the utterances of "exhibit 14," which is what a legal team wants.</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>Sentence-embedding models like SBERT showed that text with "essentially identical meaning whilst not sharing any of the same keywords" can be matched reliably by comparing dense vectors (Reimers &amp; Gurevych, <strong>2019</strong>).</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>It finds paraphrases and visual content effortlessly, but it's weaker at exact strings — a specific SKU, a person's name, "exhibit <strong>14.</strong>" That's why the honest answer is both, composed.</div></div></div></div>
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#what-is-keyword-search-over-video">What is keyword search over video?</a></li><li><a href="#what-is-semantic-video-search">What is semantic video search?</a></li><li><a href="#how-does-semantic-search-over-video-work">How does semantic search over video work?</a></li><li><a href="#why-should-a-hit-be-a-playable-moment-not-a-timestamp">Why should a hit be a playable moment, not a timestamp?</a></li><li><a href="#how-do-semantic-and-keyword-video-search-compare">How do semantic and keyword video search compare?</a></li><li><a href="#how-do-you-run-both-with-the-videodb-sdk">How do you run both with the VideoDB SDK?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="what-is-keyword-search-over-video">What is keyword search over video?</h2>
+<p>Keyword search over video is text search against a transcript. Speech is transcribed, the transcript is indexed with the string and inverted-index techniques search engines have used for decades, and a query matches where the exact words (or close variants) appear.</p>
+<p>Classic lexical methods score documents by surface overlap — shared words and word frequencies, in the style of TF-IDF and its successors. That gives keyword search its two defining properties. It is <em>precise</em>: searching a 4-hour deposition for "exhibit 14" finds exactly the utterances of "exhibit 14," which is what a legal team wants. And it is <em>literal</em>: it knows nothing about meaning, so "two sentences that share nothing but words like 'the', 'a', 'is'" can score as similar while true paraphrases score as unrelated (<a href="https://www.pinecone.io/learn/semantic-search/" rel="noopener" target="_blank">Pinecone, semantic search</a>). Search "budget concerns" and the moment where someone says "we can't afford this" is invisible.</p>
+<p>The deeper limitation is scope: a transcript only encodes what was <em>said</em>. The whiteboard diagram, the product on screen, the moment a demo visibly crashes — none of it exists in a transcript, so no amount of keyword cleverness can find it.</p>
+<h2 id="what-is-semantic-video-search">What is semantic video search?</h2>
+<p>Semantic video search matches the <em>meaning</em> of a query against the <em>content</em> of the video — spoken and visual — rather than matching strings. It's the technology behind most things marketed as AI video search: describe the moment in your own words, get the moment back.</p>
+<p>Two research results made this practical. Sentence-embedding models like SBERT showed that text with "essentially identical meaning whilst not sharing any of the same keywords" can be matched reliably by comparing dense vectors (<a href="https://arxiv.org/abs/1908.10084" rel="noopener" target="_blank">Reimers &amp; Gurevych, 2019</a>). And CLIP showed that images and natural language can be embedded into a shared space, so a sentence can retrieve a picture (<a href="https://arxiv.org/abs/2103.00020" rel="noopener" target="_blank">Radford et al., 2021</a>). Put together: both the query and every scene in a video can become vectors, and "which moment is closest in meaning?" becomes a nearest-neighbor lookup.</p>
+<p>Semantic search inverts keyword search's failure modes. It finds paraphrases and visual content effortlessly, but it's weaker at exact strings — a specific SKU, a person's name, "exhibit 14." That's why the honest answer is both, composed.</p>
+<blockquote class="vb-cta">
+<p><strong>Your users describe moments; they don't quote transcripts.</strong> Ship search that understands both in one SDK. <a href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free →</a></p>
+</blockquote>
+<h2 id="how-does-semantic-search-over-video-work">How does semantic search over video work?</h2>
+<p>The pipeline is: structure the video into moments, describe and embed each moment, then answer queries with vector similarity. In VideoDB's model this happens through indexes — reusable, additive layers over the media (<a href="https://docs.videodb.io" rel="noopener" target="_blank">VideoDB docs</a>).</p>
+<p>Concretely, four stages:</p>
+<ol>
+<li><strong>Segment.</strong> The continuous stream is cut into scenes — coherent spans of seconds, not whole files. The unit is the moment, not the file.</li>
+<li><strong>Describe.</strong> Each scene is described across modalities: the transcript of what's said, plus a vision model's account of what's visible. VideoDB is bring-your-own-model here — Twelve Labs, Gemini, OpenAI, Anthropic, or your own model wraps as the scene index (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</li>
+<li><strong>Embed.</strong> Scene descriptions and transcript segments become dense vectors, the semantic layer alongside the keyword layer.</li>
+<li><strong>Retrieve.</strong> A query is embedded and compared by cosine similarity — smaller angle between vectors, closer meaning (<a href="https://www.pinecone.io/learn/semantic-search/" rel="noopener" target="_blank">Pinecone</a>) — with approximate-nearest-neighbor indexes keeping lookups sub-second at archive scale.</li>
+</ol>
+<p>Keyword search, by contrast, needs only stage 1's transcript and an inverted index. That's why it's cheap — and why it's blind to everything visual. If you're building the surrounding stack yourself, this is the point where the frankenstack appears: transcription, a vision model, an embedding model, a vector database, and glue. That build-versus-buy trade is the subject of the hub piece on <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a>, and the retrieval pattern on top of it is <a href="what-is-video-rag.html">video RAG ↗</a>.</p>
+<h2 id="why-should-a-hit-be-a-playable-moment-not-a-timestamp">Why should a hit be a playable moment, not a timestamp?</h2>
+<p>Because a timestamp is homework, not an answer. When search returns <code>{"video_id": "v-829", "t": 3417}</code>, a human still has to open the file and scrub, and an AI agent has to orchestrate download, seek, and clip extraction before it can <em>do</em> anything — summarize, verify, publish, alert.</p>
+<p>The alternative is search that materializes results: every hit resolves to a playable clip, streamable immediately. In VideoDB, search returns moments that compile straight to a stream — retrieval runs in <strong>~120ms across petabyte-scale archives, roughly 100× faster</strong> than a conventional pipeline that searches an index, seeks into storage, and cuts a clip on demand (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>). The open-source <a href="https://github.com/video-db/StreamRAG" rel="noopener" target="_blank">StreamRAG</a> agent is a working example: query in, watchable stream out, no intermediate plumbing.</p>
+
+<blockquote class="vb-cta">
+<p><strong>Stop shipping timestamps.</strong> Return moments your users can watch and your agents can act on, straight from the search call. <a href="https://console.videodb.io" rel="noopener" target="_blank">Get an API key →</a></p>
+</blockquote>
+<h2 id="how-do-semantic-and-keyword-video-search-compare">How do semantic and keyword video search compare?</h2>
+<p>Keyword search wins on exact strings and cost; semantic search wins on meaning and visual content; only moment-based retrieval makes either useful downstream. The table is the summary:</p>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th></th>
+<th>Keyword search</th>
+<th>Semantic video search</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Matches on</td>
+<td>Exact words in the transcript</td>
+<td>Meaning of speech <em>and</em> visuals</td>
+</tr>
+<tr>
+<td>Query style</td>
+<td><code>"exhibit 14"</code></td>
+<td>"the moment the witness contradicts herself"</td>
+</tr>
+<tr>
+<td>Finds visual moments</td>
+<td class="vb-bad">No — transcript-only</td>
+<td class="vb-good">Yes — via scene indexes</td>
+</tr>
+<tr>
+<td>Handles paraphrase</td>
+<td class="vb-bad">No</td>
+<td class="vb-good">Yes</td>
+</tr>
+<tr>
+<td>Exact names, SKUs, jargon</td>
+<td>Excellent</td>
+<td>Weaker — can blur specifics</td>
+</tr>
+<tr>
+<td>Index cost</td>
+<td>Low (transcription + inverted index)</td>
+<td>Higher (scene descriptions + embeddings, one-time)</td>
+</tr>
+<tr>
+<td>Failure mode</td>
+<td>Misses everything not literally said</td>
+<td>Occasionally retrieves look-alike moments</td>
+</tr>
+<tr>
+<td>Best for</td>
+<td>Compliance, legal, known-item lookup</td>
+<td>Discovery, agents, natural-language product search</td>
+</tr>
+</tbody>
+</table></div>
+<p>The practical pattern in production: semantic search as the default path, keyword search as the precision path, and both returning the same currency — playable moments.</p>
+<h2 id="how-do-you-run-both-with-the-videodb-sdk">How do you run both with the VideoDB SDK?</h2>
+<p>Both search types are one parameter apart in the VideoDB SDK (<code>pip install videodb</code>), and a scene index adds visual search on top (<a href="https://docs.videodb.io" rel="noopener" target="_blank">VideoDB docs</a>):</p>
+<pre><code class="language-python">import videodb
+from videodb import SearchType, IndexType
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+coll = conn.get_collection()
+video = coll.upload(url=&quot;https://example.com/all-hands.mp4&quot;)
+
+# keyword search: exact words, needs a transcript index
+video.index_spoken_words()
+exact = video.search(&quot;quarterly roadmap&quot;, search_type=SearchType.keyword)
+
+# semantic search: meaning, not spelling
+sem = video.search(&quot;where do we discuss what ships next quarter?&quot;,
+                   search_type=SearchType.semantic)
+
+# scene search: what's visible, not what's said
+video.index_scenes(prompt=&quot;Describe slides, demos, and speakers&quot;)
+visual = video.search(&quot;the slide with the architecture diagram&quot;,
+                      search_type=SearchType.scene, index_type=IndexType.scene)
+
+sem.play()  # every result compiles to a playable stream
+</code></pre>
+<p>Indexes are additive and composable at query time, so adding scene search later doesn't disturb the transcript layer — and swapping the underlying model re-indexes the same media rather than rebuilding the pipeline. If your current plan is to call a vision model per query instead, the cost math in <a href="videodb-vs-running-vlms-frame-by-frame.html">frame-by-frame VLM calls vs. indexing once ↗</a> is worth reading first.</p>
+<blockquote class="vb-cta">
+<p><strong>One upload, three search types.</strong> Transcript, semantic, and scene search on the same video, first query in about five minutes. <a href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-rag.html"><span>video RAG</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="videodb-vs-running-vlms-frame-by-frame.html"><span>frame-by-frame VLM calls vs. indexing once</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is semantic video search?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Search that retrieves video moments by meaning rather than exact words. Queries and video scenes are embedded as vectors in a shared space; results are the scenes closest in meaning to the query — including visual moments no transcript contains.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How is AI video search different from a video search engine like YouTube&#x27;s?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Platform search engines mostly rank whole videos by title, description, and engagement metadata. AI video search operates inside the footage: it indexes speech and scenes so a query resolves to the exact moment within a video, not to a watch page.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Is semantic search always better than keyword search?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No. Keyword search is more reliable for exact strings — names, part numbers, legal phrases — and cheaper to index. Semantic search is better for paraphrase, discovery, and visual content. Production systems compose both against the same media.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Do I need a vector database to build semantic video search?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">If you build it yourself, yes — plus transcription, a vision model, an embedding model, and storage glue. A video database like VideoDB ships the embedding, indexing, and retrieval layers behind one API, with the model swappable.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How fast can semantic video search be?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Retrieval itself is a vector lookup and can be very fast: VideoDB serves results in ~120ms across petabyte-scale archives, with every hit materialized as a playable clip rather than a timestamp (videodb.io).</div></div></div>
+<div class="vb-take"><h3>The query is a sentence. The answer is a moment.</h3><p>Keyword search tells you where words were said; semantic search understands what you meant; the system underneath decides whether the result is a timestamp to scrub or a clip to play. Index once, search both ways, return moments.</p><a class="vb-btn" href="https://console.videodb.io" rel="noopener" target="_blank">Try VideoDB free &#8594;</a></div>
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>Pinecone — Semantic search (lexical vs. dense retrieval, cosine similarity) — https://www.pinecone.io/learn/semantic-search/</li>
+<li>Reimers &amp; Gurevych — Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks — https://arxiv.org/abs/1908.10084</li>
+<li>Radford et al. — Learning Transferable Visual Models From Natural Language Supervision (CLIP) — https://arxiv.org/abs/2103.00020</li>
+<li>VideoDB (retrieval latency, bring-your-own-model, search stats) — https://videodb.io</li>
+<li>VideoDB documentation (index and search types) — https://docs.videodb.io</li>
+<li>StreamRAG — video search and streaming agent — https://github.com/video-db/StreamRAG</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

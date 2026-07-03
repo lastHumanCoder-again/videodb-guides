@@ -1,0 +1,12 @@
+{
+  "file": "frame-by-frame-cost-curve",
+  "title": "Asking questions of a 1,000-hour archive: frame-by-frame VLM vs. indexing once",
+  "rows": [
+    ["Frame-by-frame · 1 question", 324, "$324 — full re-read", false],
+    ["Frame-by-frame · 10 questions", 3240, "$3,240", false],
+    ["Frame-by-frame · 100 questions", 32400, "$32,400", false],
+    ["Index once, query forever", 324, "one pass, then ~120 ms retrieval", true]
+  ],
+  "footnote": "Derived from Gemini API pricing ($0.30/1M input tokens, ~300 tokens/s of video at default resolution, ai.google.dev). Retrieval latency: videodb.io.",
+  "type": "bar"
+}

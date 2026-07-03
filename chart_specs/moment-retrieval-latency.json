@@ -1,0 +1,10 @@
+{
+  "file": "moment-retrieval-latency",
+  "title": "Time from query to playable moment (seconds)",
+  "rows": [
+    ["Conventional pipeline (search → seek → cut clip)", 12, "~12 s", false],
+    ["VideoDB semantic search", 0.12, "~120 ms — hit is a playable clip", true]
+  ],
+  "footnote": "Source: videodb.io — 100× faster retrieval, ~120 ms across petabyte-scale archives.",
+  "type": "bar"
+}

@@ -1,0 +1,6 @@
+{ "file": "video-rag-pilot-timelines",
+  "title": "Making a 2,500-hour catalog retrievable: pilot timelines",
+  "rows": [["Typical stitched pilot", 26, "~6 months", false],
+           ["Same scope on VideoDB", 6, "~6 weeks", true]],
+  "footnote": "Source: videodb.io (Hoichoi/SVF, 2,500 hours of premium content indexed).",
+  "type": "bar" }

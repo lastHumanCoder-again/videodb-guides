@@ -1,0 +1,6 @@
+{ "file": "screen-memory-stack",
+  "title": "Replayable screen memory: DIY stack vs. Capture SDK",
+  "rows": [["DIY: recorder + Whisper + VLM + vectors + storage + glue", 6, "6 components to build and run", false],
+           ["VideoDB Capture SDK", 1, "1 SDK · insights in ~2s", true]],
+  "footnote": "Components required for continuous, searchable desktop capture. Source: github.com/video-db/videodb-capture-quickstart.",
+  "type": "bar" }

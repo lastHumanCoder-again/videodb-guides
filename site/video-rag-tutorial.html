@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Multimodal RAG Tutorial: Build Video RAG for AI Agents</title>
+<meta name="description" content="A hands-on multimodal RAG tutorial: index scenes and speech, retrieve playable video moments, and feed timestamped citations back into your LLM answers.">
+<link rel="canonical" href="https://videodb.io/blog/video-rag-tutorial">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Video RAG: a hands-on tutorial", "description": "A hands-on multimodal RAG tutorial: index scenes and speech, retrieve playable video moments, and feed timestamped citations back into your LLM answers.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/video-rag-tutorial"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is the difference between multimodal RAG and video RAG?", "acceptedAnswer": {"@type": "Answer", "text": "Multimodal RAG is the general pattern \u2014 retrieval across text, images, audio, video. Video RAG is its hardest instance: continuous media where evidence is time-anchored and spans two channels (speech and visuals). Solve video RAG and the rest of multimodal retrieval is a subset."}}, {"@type": "Question", "name": "Do I need a separate vector database like Pinecone?", "acceptedAnswer": {"@type": "Answer", "text": "No. Embedding and semantic search are part of the index layer, so there is no external vector store to provision, sync, or pay for. If you already run one for text, you can keep it for text and let video moments live where the video lives."}}, {"@type": "Question", "name": "Which LLM should generate the final answer?", "acceptedAnswer": {"@type": "Answer", "text": "Any of them \u2014 the generation step in this tutorial is provider-agnostic by design. The pipeline hands your LLM timestamped evidence; GPT, Claude, and Gemini all handle the cite-from-context instruction well."}}, {"@type": "Question", "name": "How does this handle a corpus that grows daily?", "acceptedAnswer": {"@type": "Answer", "text": "Uploads trigger indexing per asset; nothing global is rebuilt. That is the operational difference from chunk-and-embed pipelines, where corpus growth means re-running batch jobs and versioning an external index."}}, {"@type": "Question", "name": "Can the answer include an actual video clip, not just a timestamp?", "acceptedAnswer": {"@type": "Answer", "text": "Yes \u2014 that is the defining feature. Search results resolve to playable stream URLs materialized in milliseconds, so your answer UI can embed the exact evidence moments rather than linking a full recording with a \"seek to 41:32\" instruction."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "Video RAG: a hands-on tutorial", "item": "https://videodb.io/blog/video-rag-tutorial"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Developer guide</div>
+<h1 class="vb-title">Video RAG: a hands-on tutorial</h1>
+<div class="vb-dek">For engineers who have shipped text RAG and now face a corpus that talks and moves — build retrieval that returns the moment, not the chunk.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 9 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">BUILDING VIDEO RAG: SERVICES TO OPERATE, STITCHED VS. VIDEODB</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Stitched stack (S3 + ffmpeg + Whisper + VLM + vectors + glue)</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">8 services</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB (index + search + stream)</text>
+<rect x="300" y="108" width="45" height="26" rx="5" fill="#E85810"/>
+<text x="353" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">1 API</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Count of separate services to operate. Source: videodb.io.</text>
+</svg><figcaption class="vb-cap">A stitched video RAG stack (storage, ffmpeg, speech, vision, vectors, metadata, streaming, glue) vs. one API. Source: <a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>.</figcaption></figure></div>
+<p class="vb-intro">You build video RAG the same way you build text RAG — index, embed, retrieve, generate — except the retrieval unit is a timestamped video moment instead of a text chunk, and the index covers what was <em>shown</em> as well as what was <em>said</em>. <strong>Multimodal RAG</strong> over video means an agent can answer "how did the demo fail?" with a grounded paragraph <em>and</em> the 30-second clip that proves it. This tutorial builds that pipeline end to end: upload a corpus, index scenes and speech, retrieve playable moments, and feed them into an LLM answer with citations back to timestamps.</p>
+
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#why-isn-t-text-rag-over-transcripts-enough">Why isn&#x27;t text RAG over transcripts enough?</a></li><li><a href="#how-do-you-build-video-rag-six-steps">How do you build video RAG? Six steps</a></li><li><a href="#what-should-you-know-before-production">What should you know before production?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="why-isn-t-text-rag-over-transcripts-enough">Why isn't text RAG over transcripts enough?</h2>
+<p>The naive approach — run Whisper, chunk the transcripts, embed into a vector store, retrieve as text — works exactly until the answer was never spoken. Retrieval-augmented generation combines a parametric model with non-parametric retrieval memory (<a href="https://arxiv.org/abs/2005.11401" rel="noopener" target="_blank">Lewis et al., 2020</a>); the quality ceiling is whatever the retrieval memory contains. A transcript-only memory silently discards the visual channel:</p>
+<ul>
+<li><strong>Unspoken evidence vanishes.</strong> The error dialog in a screen recording, the whiteboard sketch, the chart on a slide — none of it is in the transcript. A speech model like Whisper transcribes speech (<a href="https://github.com/openai/whisper" rel="noopener" target="_blank">github.com/openai/whisper</a>); it does not watch.</li>
+<li><strong>Chunks lose time.</strong> Standard text chunking breaks the mapping back to timestamps, so even correct retrieval cannot yield a playable citation.</li>
+<li><strong>Answers are unverifiable.</strong> Text RAG cites a passage; the user can read it. Transcript-RAG cites a passage from an hour-long video; the user cannot practically verify it without the moment itself.</li>
+</ul>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th>Dimension</th>
+<th>Text RAG over transcripts</th>
+<th>Video RAG (this tutorial)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Retrieval unit</td>
+<td>Text chunk</td>
+<td>Timestamped moment (start, end)</td>
+</tr>
+<tr>
+<td>Visual channel</td>
+<td>Lost</td>
+<td>Scene index, searchable</td>
+</tr>
+<tr>
+<td>Citation</td>
+<td>Passage string</td>
+<td>Playable clip URL + timestamp</td>
+</tr>
+<tr>
+<td>Stack</td>
+<td>Whisper + chunker + vector DB + store + glue</td>
+<td>One API</td>
+</tr>
+<tr>
+<td>Freshness</td>
+<td>Re-chunk, re-embed pipeline</td>
+<td>Re-index a layer</td>
+</tr>
+</tbody>
+</table></div>
+<p>Video RAG fixes this by treating the moment as the unit of retrieval — the data model at the center of <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a>. For the concept-level treatment, see <a href="what-is-video-rag.html">what is video RAG ↗</a>; this page is the build.</p>
+<p><strong>Prerequisites:</strong> Python 3.8+, a VideoDB API key (free tier), an LLM API key of your choice, a handful of corpus videos (talks, meetings, screen recordings), and <code>pip install videodb</code>.</p>
+<blockquote class="vb-cta">
+<p><strong>The retrieval layer is four calls.</strong> Everything RAG-specific in this tutorial is standard SDK surface. <a href="https://docs.videodb.io" rel="noopener" target="_blank">Read the docs →</a></p>
+</blockquote>
+<h2 id="how-do-you-build-video-rag-six-steps">How do you build video RAG? Six steps</h2>
+<h3>Step 1 — Upload the corpus</h3>
+<pre><code class="language-python">import videodb
+
+conn = videodb.connect()
+coll = conn.get_collection()
+
+urls = [
+    &quot;https://example.com/all-hands-june.mp4&quot;,
+    &quot;https://example.com/product-demo-v2.mp4&quot;,
+    &quot;https://www.youtube.com/watch?v=example&quot;,
+]
+videos = [coll.upload(url=u) for u in urls]
+</code></pre>
+<p>One collection is one retrieval scope. Per-user or per-workspace corpora should be separate collections so retrieval boundaries match permission boundaries.</p>
+<h3>Step 2 — Index speech and scenes</h3>
+<p>Two additive layers over the same media — this is the "multimodal" in multimodal RAG:</p>
+<pre><code class="language-python">for video in videos:
+    video.index_spoken_words()      # what was said
+    video.index_scenes(
+        prompt=(
+            &quot;Describe the scene: on-screen text, UI state, &quot;
+            &quot;charts, people, and actions.&quot;
+        )
+    )
+</code></pre>
+<p>The scene prompt is your retrieval vocabulary — write it for the questions you expect. Indexes are built once and persist; embeddings for semantic search are part of the index layer, so there is no separate vector database to provision or sync (<a href="https://docs.videodb.io" rel="noopener" target="_blank">VideoDB docs</a>). The model behind scene indexing is pluggable (Twelve Labs, Gemini, OpenAI, Anthropic, or your own).</p>
+<h3>Step 3 — Retrieve moments, not chunks</h3>
+<pre><code class="language-python">question = &quot;how did the checkout demo fail in the June review?&quot;
+
+spoken = coll.search(query=question,
+                     index_type=&quot;spoken_word&quot;, search_type=&quot;semantic&quot;)
+visual = coll.search(query=question,
+                     index_type=&quot;scene&quot;, search_type=&quot;semantic&quot;)
+
+shots = spoken.get_shots() + visual.get_shots()
+</code></pre>
+<p>Each shot carries <code>video_id</code>, <code>start</code>, <code>end</code>, and matched text or scene description. Searching both indexes and merging is the simplest fusion strategy; retrieval latency is on the order of ~120 ms even across petabyte-scale archives (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>), so a two-index query costs little.</p>
+<h3>Step 4 — Assemble the LLM context with timestamps intact</h3>
+<pre><code class="language-python">def fmt(s):
+    return f&quot;[{s.video_id} @ {int(s.start)}-{int(s.end)}s] {s.text}&quot;
+
+context = &quot;\n&quot;.join(fmt(s) for s in sorted(shots, key=lambda s: -s.score)[:8])
+
+prompt = (
+    &quot;Answer using only the evidence below. Cite each claim &quot;
+    f&quot;as [video @ seconds].\n\nEvidence:\n{context}\n\nQ: {question}&quot;
+)
+answer = llm.complete(prompt)   # your LLM client here
+</code></pre>
+<p>The load-bearing detail is the citation format: because every evidence line carries its timestamps, the model's citations survive into the answer, and each one can be resolved back to a real moment. This is where transcript-chunk pipelines break — their chunks no longer know when they happened.</p>
+<h3>Step 5 — Return playable citations</h3>
+<pre><code class="language-python">top = max(shots, key=lambda s: s.score)
+clip_url = spoken.play_stream()     # matched moments as an HLS stream
+
+print(answer)
+print(&quot;Watch the evidence:&quot;, clip_url)
+</code></pre>
+<p>Search results materialize as playable clips in milliseconds — the answer ships with its proof attached. In an agent setting, <code>{answer, moments[], clip_url}</code> is the tool result; the agent can quote, and the human can verify with one click.</p>
+<h3>Step 6 — Wrap it as an agent tool</h3>
+<p>The pipeline above is a single function — <code>ask_corpus(question) -&gt; answer + evidence</code> — which makes it a natural tool for any agent runtime, the same wiring covered in the <a href="give-your-ai-agent-vision-in-5-minutes.html">5-minute agent quickstart ↗</a>. The production reference for this exact shape is <a href="https://github.com/video-db/StreamRAG" rel="noopener" target="_blank">StreamRAG</a>, VideoDB's open-source video retrieval and streaming agent: upload a collection, search it conversationally, and even publish it as a custom GPT. The <a href="https://github.com/video-db/videodb-cookbook" rel="noopener" target="_blank">videodb-cookbook</a> has the notebook variants — multimodal search, keyword search, scene-metadata retrieval.</p>
+
+<blockquote class="vb-cta">
+<p><strong>Fork the reference, keep the architecture.</strong> StreamRAG is the running version of this tutorial. <a href="https://docs.videodb.io" rel="noopener" target="_blank">See the quickstart →</a></p>
+</blockquote>
+<h2 id="what-should-you-know-before-production">What should you know before production?</h2>
+<p><strong>Tune fusion before touching models.</strong> Most quality wins come from retrieval, not generation: adjust the scene prompt, rebalance spoken-vs-visual weighting per query type, and cap evidence at what the model actually uses. Only then consider swapping the indexing model.</p>
+<p><strong>Re-index instead of re-ingesting.</strong> When your taxonomy changes ("start tracking error dialogs"), add a new scene index with a new prompt over the same media. Indexes are additive layers; the corpus is uploaded once.</p>
+<p><strong>Evaluate with moment-level ground truth.</strong> Text-RAG eval habits carry over, but your gold labels should be timestamp ranges, not passages. A retrieved shot overlapping the gold range is a hit; build the harness early.</p>
+<p><strong>Mind retrieval scope and retention.</strong> Collections are your permission boundary, and memory is retention-aware — enterprise corpora (meetings, screen recordings) usually need both scoped per team and expiring on schedule.</p>
+<p><strong>Live sources drop in unchanged.</strong> Because batch and real-time are modes of one backend, the same RAG loop can run over indexed RTSP streams — RAG over yesterday's camera footage is the same four calls.</p>
+<blockquote class="vb-cta">
+<p><strong>The unit is the moment, not the file.</strong> Once retrieval returns moments, every downstream feature — answers, reels, alerts — is composition. <a href="https://docs.videodb.io" rel="noopener" target="_blank">Read the docs →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-rag.html"><span>what is video RAG</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="give-your-ai-agent-vision-in-5-minutes.html"><span>5-minute agent quickstart</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is the difference between multimodal RAG and video RAG?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Multimodal RAG is the general pattern — retrieval across text, images, audio, video. Video RAG is its hardest instance: continuous media where evidence is time-anchored and spans two channels (speech and visuals). Solve video RAG and the rest of multimodal retrieval is a subset.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Do I need a separate vector database like Pinecone?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No. Embedding and semantic search are part of the index layer, so there is no external vector store to provision, sync, or pay for. If you already run one for text, you can keep it for text and let video moments live where the video lives.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Which LLM should generate the final answer?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Any of them — the generation step in this tutorial is provider-agnostic by design. The pipeline hands your LLM timestamped evidence; GPT, Claude, and Gemini all handle the cite-from-context instruction well.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How does this handle a corpus that grows daily?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Uploads trigger indexing per asset; nothing global is rebuilt. That is the operational difference from chunk-and-embed pipelines, where corpus growth means re-running batch jobs and versioning an external index.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can the answer include an actual video clip, not just a timestamp?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes — that is the defining feature. Search results resolve to playable stream URLs materialized in milliseconds, so your answer UI can embed the exact evidence moments rather than linking a full recording with a &quot;seek to 41:32&quot; instruction.</div></div></div>
+
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>Lewis et al., "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks" — https://arxiv.org/abs/2005.11401</li>
+<li>StreamRAG, video retrieval and streaming agent (GitHub) — https://github.com/video-db/StreamRAG</li>
+<li>VideoDB cookbook, RAG and search notebooks (GitHub) — https://github.com/video-db/videodb-cookbook</li>
+<li>VideoDB documentation — https://docs.videodb.io</li>
+<li>VideoDB — https://videodb.io</li>
+<li>OpenAI Whisper (GitHub) — https://github.com/openai/whisper</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

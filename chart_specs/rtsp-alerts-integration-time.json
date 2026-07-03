@@ -1,0 +1,10 @@
+{
+  "file": "rtsp-alerts-integration-time",
+  "title": "Production camera monitoring: integration time, DIY vs. RTStream",
+  "rows": [
+    ["DIY pipeline (original estimate)", 36, "~9 months", false],
+    ["VideoDB RTStream (CloudPhysician)", 8, "~8 weeks", true]
+  ],
+  "footnote": "Weeks to production for a 1,000+ camera deployment. Source: videodb.io.",
+  "type": "bar"
+}

@@ -1,0 +1,6 @@
+{ "file": "training-data-search-latency",
+  "title": "Retrieval at training-data scale",
+  "rows": [["Interactive response budget (flow of thought)", 1000, "~1 s limit — Nielsen Norman Group", false],
+           ["VideoDB search across 1M+ indexed videos", 200, "<200 ms, incl. aggregating queries", true]],
+  "footnote": "Milliseconds. Sources: videodb.io; nngroup.com.",
+  "type": "bar" }

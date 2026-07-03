@@ -1,0 +1,6 @@
+{ "file": "frames-per-hour-of-video",
+  "title": "Why agents can't watch every frame: frames per hour of video",
+  "rows": [["Every frame at 30 fps", 108000, "108,000 frames", false],
+           ["Sampled at 1 fps", 3600, "3,600 frames", true]],
+  "footnote": "Source: frame-rate arithmetic (30 fps x 3,600 s); VLM context costs per arxiv.org/abs/2403.05530.",
+  "type": "bar" }

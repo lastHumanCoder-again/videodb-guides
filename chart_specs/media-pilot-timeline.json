@@ -1,0 +1,6 @@
+{ "file": "media-pilot-timeline",
+  "title": "Catalog AI pilots: traditional vs. VideoDB",
+  "rows": [["Traditional media pilot", 26, "~6 months", false],
+           ["VideoDB", 6, "~6 weeks", true]],
+  "footnote": "Weeks to a running catalog-AI pilot, OTT deployments. Source: videodb.io.",
+  "type": "bar" }

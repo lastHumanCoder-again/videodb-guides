@@ -1,0 +1,10 @@
+{
+  "file": "ffmpeg-migration-pilot-time",
+  "title": "Time to ship a media-processing pilot: custom pipeline vs. VideoDB",
+  "rows": [
+    ["Custom ffmpeg pipeline", 26, "~6 months", false],
+    ["VideoDB timeline/stream API", 6, "~6 weeks", true]
+  ],
+  "footnote": "Weeks to a running pilot. Source: videodb.io.",
+  "type": "bar"
+}

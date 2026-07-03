@@ -1,0 +1,10 @@
+{
+  "file": "video-rag-stack-services",
+  "title": "Building video RAG: services to operate, stitched vs. VideoDB",
+  "rows": [
+    ["Stitched stack (S3 + ffmpeg + Whisper + VLM + vectors + glue)", 8, "8 services", false],
+    ["VideoDB (index + search + stream)", 1, "1 API", true]
+  ],
+  "footnote": "Count of separate services to operate. Source: videodb.io.",
+  "type": "bar"
+}

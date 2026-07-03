@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Training Data from Video: The Physical-AI Data Layer</title>
+<meta name="description" content="AI training data from video, explained: how world-model and robotics teams turn petabyte archives into versioned, provenance-tracked machine learning datasets.">
+<link rel="canonical" href="https://videodb.io/blog/video-training-data-for-ai">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "AI training data from video: the data layer for physical AI", "description": "AI training data from video, explained: how world-model and robotics teams turn petabyte archives into versioned, provenance-tracked machine learning datasets.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/video-training-data-for-ai"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is AI training data for video models?", "acceptedAnswer": {"@type": "Answer", "text": "It is footage prepared to the point a training run can consume it: segmented into clips, labeled against the team's taxonomy, deduplicated, quality-scored, and tracked for provenance (source, license, consent). For world models and VLA policies, this is the primary input \u2014 OpenVLA alone trained on 970K robot demonstrations (arXiv)."}}, {"@type": "Question", "name": "How is a video dataset for machine learning different from a video archive?", "acceptedAnswer": {"@type": "Answer", "text": "An archive stores files; a dataset answers queries reproducibly. The difference is structure: per-clip metadata, versioned slices, deterministic exports, and search over moments. An archive becomes a dataset when you can ask \"every regrasp-after-slip in low light\" and get the same answer twice."}}, {"@type": "Question", "name": "Can we use our own labeling models and taxonomy?", "acceptedAnswer": {"@type": "Answer", "text": "Yes \u2014 that is the specificity bottleneck this layer exists to solve. Custom labeling models wrap as index layers over the corpus, human-in-the-loop covers the long tail, and your model IP stays private (VideoDB)."}}, {"@type": "Question", "name": "How do you handle PII and consent in training footage?", "acceptedAnswer": {"@type": "Answer", "text": "Redaction runs in-pipeline: faces, license plates, and on-screen text are removed in the same pass as resize and transcode, and consent and capture context are recorded as immutable per-clip provenance \u2014 so the compliant export is the default artifact, not a fork (VideoDB)."}}, {"@type": "Question", "name": "Does this replace simulation tools like Isaac Sim or MuJoCo?", "acceptedAnswer": {"@type": "Answer", "text": "No \u2014 it complements them. Simulators generate synthetic experience; the training-data layer curates real-world footage and keeps the two aligned for sim2real work. Teams run it alongside Isaac Sim, Newton, and MuJoCo (NVIDIA; MuJoCo)."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "AI training data from video: the data layer for physical AI", "item": "https://videodb.io/blog/video-training-data-for-ai"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Use case</div>
+<h1 class="vb-title">AI training data from video: the data layer for physical AI</h1>
+<div class="vb-dek">For world-model labs, robotics and VLA teams, and anyone turning raw footage into a video dataset for machine learning — at petabyte scale, with provenance.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 10 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">RETRIEVAL AT TRAINING-DATA SCALE</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Interactive response budget (flow of thought)</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">~1 s limit — Nielsen Norman Group</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">VideoDB search across 1M+ indexed videos</text>
+<rect x="300" y="108" width="72" height="26" rx="5" fill="#E85810"/>
+<text x="380" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">&lt;200 ms, incl. aggregating queries</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Milliseconds. Sources: videodb.io; nngroup.com.</text>
+</svg><figcaption class="vb-cap">Corpus retrieval vs. the interactivity budget: &lt;200 ms across 1M+ indexed videos, against the ~1 s flow-of-thought limit. Sources: <a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>; <a href="https://www.nngroup.com/articles/response-times-3-important-limits/" rel="noopener" target="_blank">Nielsen Norman Group</a>.</figcaption></figure></div>
+<p class="vb-intro"><strong>AI training data</strong> is the bottleneck of the physical-AI era, and most of it is video. World models, vision-language-action policies, and autonomy stacks all learn from footage — yet the pipelines that prepare that footage crack in the same four places: scale, specificity, provenance, and reuse. This page explains each bottleneck, what a training-data layer looks like when video is treated as a database rather than files in a bucket, and how teams run it in production — 1M+ videos indexed, searched in under 200 ms (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>).</p>
+<div class="vb-ki"><div class="vb-ki-head" onclick="vbKI(this)"><div class="vb-ki-l"><div class="vb-ki-dia"></div><span class="vb-ki-lab">Key insights</span></div><span class="vb-ki-chev">&#9660;</span></div><div class="vb-ki-body"><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>OpenVLA — the open <strong>7B</strong> vision-language-action model — was trained on 970,000 real-world robot demonstrations (Kim et al., arXiv).</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>VideoDB's re-clip capability sweeps clip lengths — <strong>2 </strong>s, 8 s, 16 s, or full-episode — from the same indexed corpus without re-encoding anything (VideoDB).</div></div><div class="vb-ki-item"><div class="vb-ki-dot"></div><div>Sweep <strong>2</strong>s/8s/16s/episode slices from one index — no re-encoding.</div></div></div></div>
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#why-is-video-the-hard-part-of-ai-training-data">Why is video the hard part of AI training data?</a></li><li><a href="#what-does-a-training-data-layer-for-video-actually-do">What does a training-data layer for video actually do?</a></li><li><a href="#how-do-you-re-cut-a-corpus-without-re-encoding-it">How do you re-cut a corpus without re-encoding it?</a></li><li><a href="#where-does-this-fit-in-a-robotics-or-world-model-stack">Where does this fit in a robotics or world-model stack?</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="why-is-video-the-hard-part-of-ai-training-data">Why is video the hard part of AI training data?</h2>
+<p>Because the models that matter next learn from the physical world, and the physical world arrives as video. OpenVLA — the open 7B vision-language-action model — was trained on 970,000 real-world robot demonstrations (<a href="https://arxiv.org/abs/2406.09246" rel="noopener" target="_blank">Kim et al., arXiv</a>). Ego4D, the reference egocentric dataset, took 3,670 hours of daily-life footage from 931 camera wearers across 74 locations to assemble (<a href="https://arxiv.org/abs/2110.07058" rel="noopener" target="_blank">Grauman et al., arXiv</a>). Those numbers describe successful, heavily funded collection efforts — and they are small compared to what world-model labs now ingest.</p>
+<p>At that scale, four bottlenecks show up in order (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>):</p>
+<ol>
+<li><strong>Scale.</strong> Pipelines built as scripts over object storage crack every time the corpus doubles: indexing lags, dedup becomes approximate, and nobody trusts the sample counts.</li>
+<li><strong>Specificity.</strong> Off-the-shelf tags ("person," "car," "indoor") do not match your taxonomy. A robotics team needs "left-gripper regrasp after slip," and no generic labeling API knows what that is.</li>
+<li><strong>Provenance.</strong> Source, license, capture context, and consent per clip — the metadata that determines whether a sample is legally and scientifically usable — is usually a spreadsheet that stopped being updated eight months ago.</li>
+<li><strong>Reuse.</strong> Prepped samples die in S3. The curated slice built for one experiment can't be found, trusted, or resampled for the next.</li>
+</ol>
+<p>The pattern behind all four is the same: video is being managed as files when the workload needs a database — queryable moments, versioned slices, and metadata that travels with every clip.</p>
+<blockquote class="vb-cta">
+<p><strong>Your corpus doubled again. Did your pipeline survive?</strong> See what a video corpus looks like as a queryable database. <a href="https://console.videodb.io" rel="noopener" target="_blank">Start free in the console →</a></p>
+</blockquote>
+<h2 id="what-does-a-training-data-layer-for-video-actually-do">What does a training-data layer for video actually do?</h2>
+<p>A training-data layer is the system between raw footage and the training run: it ingests at petabyte scale, structures the corpus into queryable moments, and exports reproducible dataset slices. Concretely, on VideoDB, that breaks into capabilities that map one-to-one onto the four bottlenecks (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>):</p>
+<ul>
+<li><strong>Petabyte-scale ingest</strong> through one normalized path — recorded archives, live robot streams, dataset drops.</li>
+<li><strong>Per-clip quality scoring and dedup</strong>, so corpus growth adds signal instead of noise.</li>
+<li><strong>Reproducible scene and event segmentation</strong> — the same footage segments the same way every run.</li>
+<li><strong>Custom labeling models wrapped as indexes.</strong> Your taxonomy, your models, run as additive index layers, with human-in-the-loop reserved for the long tail. Your model IP stays yours.</li>
+<li><strong>Immutable provenance</strong> — source, license, capture context, and consent recorded per clip, at the data layer instead of a side spreadsheet.</li>
+<li><strong>Lab-grade reproducibility:</strong> versioned slices, run logs, deterministic exports — so "the dataset from the March run" is an artifact, not an archaeology project.</li>
+</ul>
+<p>Retrieval is what makes the corpus usable day to day: searches across <strong>1M+ indexed videos</strong> return in <strong>under 200 ms including aggregating queries</strong> (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>) — comfortably inside the one-second budget human-factors research sets for keeping an analyst's flow of thought uninterrupted (<a href="https://www.nngroup.com/articles/response-times-3-important-limits/" rel="noopener" target="_blank">Nielsen Norman Group</a>).</p>
+
+<pre><code class="language-python">import videodb
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+corpus = conn.get_collection()
+
+# Custom taxonomy as an index layer — your model, your labels
+videos = corpus.get_videos()
+for video in videos:
+    video.index_scenes(
+        prompt=&quot;Label gripper events: grasp, regrasp-after-slip, release, miss&quot;
+    )
+
+# Query the corpus like a database; every hit is a playable moment
+results = corpus.search(&quot;regrasp after slip, low light, cluttered bin&quot;)
+for shot in results.get_shots():
+    print(shot.video_id, shot.start, shot.end)
+</code></pre>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th></th>
+<th>Object storage + scripts</th>
+<th>Training-data layer (VideoDB)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Find samples</td>
+<td>Filename conventions, tribal knowledge</td>
+<td>Semantic query, &lt;200 ms across 1M+ videos</td>
+</tr>
+<tr>
+<td>Labels</td>
+<td>Off-the-shelf tags</td>
+<td>Your models as indexes, additive layers</td>
+</tr>
+<tr>
+<td>Provenance</td>
+<td>Side spreadsheet</td>
+<td>Immutable, per clip</td>
+</tr>
+<tr>
+<td>New clip lengths</td>
+<td>Re-encode the corpus</td>
+<td>Re-clip without re-encoding</td>
+</tr>
+<tr>
+<td>Reproducing a dataset</td>
+<td>Best effort</td>
+<td>Versioned slices, deterministic exports</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="how-do-you-re-cut-a-corpus-without-re-encoding-it">How do you re-cut a corpus without re-encoding it?</h2>
+<p>By separating the index from the encoding: clips are defined as moments over the source media, so changing clip length is a query change, not a compute job. VideoDB's re-clip capability sweeps clip lengths — 2 s, 8 s, 16 s, or full-episode — from the same indexed corpus without re-encoding anything (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>).</p>
+<p>This matters more than it sounds. Clip length is a hyperparameter: the context window that helps a world model may starve a manipulation policy, and the only way to know is to sweep. When every sweep means re-encoding petabytes, teams stop sweeping. When it is a parameter, ablations that were infrastructure projects become experiment configs.</p>
+<p>Sample modification runs in the same pipeline, in one pass: redact PII — faces, plates, on-screen text — enhance low-light footage, resize, and transcode on the way to export (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>). Compliance transforms stop being a separate pipeline that provenance records lose track of; the redacted export carries its lineage with it.</p>
+<blockquote class="vb-cta">
+<p><strong>Clip length is a hyperparameter. Treat it like one.</strong> Sweep 2s/8s/16s/episode slices from one index — no re-encoding. <a href="https://console.videodb.io" rel="noopener" target="_blank">Get an API key →</a></p>
+</blockquote>
+<h2 id="where-does-this-fit-in-a-robotics-or-world-model-stack">Where does this fit in a robotics or world-model stack?</h2>
+<p>Alongside the simulator and under the training loop — as the layer that manages what the real world recorded. Robotics and VLA teams typically run three loops on it (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>):</p>
+<p><strong>Real-time perception ingest.</strong> Robot and rig footage streams in continuously, indexed on arrival, so the corpus is current rather than quarterly — the same live-ingest primitives that run <a href="live-camera-intelligence.html">camera fleets in production ↗</a>.</p>
+<p><strong>Model and world-model validation.</strong> Score rollouts against indexed ground truth and catch regressions — retrieval over real footage becomes part of the eval harness, not a manual review.</p>
+<p><strong>The sim2real bridge.</strong> Simulation platforms — NVIDIA's Isaac Sim for robotics simulation and synthetic data generation (<a href="https://developer.nvidia.com/isaac/sim" rel="noopener" target="_blank">NVIDIA</a>), Newton, and the MuJoCo physics engine (<a href="https://mujoco.org/" rel="noopener" target="_blank">MuJoCo</a>) — generate the synthetic side; the training-data layer curates the real side and keeps the two aligned: matched taxonomies, comparable slices, one place to ask "where does sim diverge from real?"</p>
+<p>Because this market is embedded rather than self-serve, the engagement runs in three phases: <strong>Audit</strong> (a week embedded — mapping taxonomy, storage, and eval needs), <strong>Build</strong> (custom labeling models, indexes, provenance), and <strong>Hand-off</strong> — a searchable, versioned dataset running on your infrastructure, not a dependency on someone else's (<a href="https://videodb.io" rel="noopener" target="_blank">VideoDB</a>). Deployment follows the corpus: managed cloud, your VPC, or edge.</p>
+<p>The primitives underneath — ingest, index, memory, search — are the same <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a> that serves agents and media teams; retrieval-heavy training workflows are close cousins of <a href="what-is-video-rag.html">video RAG ↗</a>, pointed at datasets instead of documents.</p>
+<blockquote class="vb-cta">
+<p><strong>A week embedded beats a quarter of guessing.</strong> The Audit maps your taxonomy, storage, and eval needs before anything is built. <a href="https://console.videodb.io" rel="noopener" target="_blank">Talk to the team via the console →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="live-camera-intelligence.html"><span>camera fleets in production</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="what-is-video-rag.html"><span>video RAG</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is AI training data for video models?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">It is footage prepared to the point a training run can consume it: segmented into clips, labeled against the team&#x27;s taxonomy, deduplicated, quality-scored, and tracked for provenance (source, license, consent). For world models and VLA policies, this is the primary input — OpenVLA alone trained on 970K robot demonstrations (arXiv).</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How is a video dataset for machine learning different from a video archive?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">An archive stores files; a dataset answers queries reproducibly. The difference is structure: per-clip metadata, versioned slices, deterministic exports, and search over moments. An archive becomes a dataset when you can ask &quot;every regrasp-after-slip in low light&quot; and get the same answer twice.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can we use our own labeling models and taxonomy?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes — that is the specificity bottleneck this layer exists to solve. Custom labeling models wrap as index layers over the corpus, human-in-the-loop covers the long tail, and your model IP stays private (VideoDB).</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How do you handle PII and consent in training footage?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Redaction runs in-pipeline: faces, license plates, and on-screen text are removed in the same pass as resize and transcode, and consent and capture context are recorded as immutable per-clip provenance — so the compliant export is the default artifact, not a fork (VideoDB).</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Does this replace simulation tools like Isaac Sim or MuJoCo?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No — it complements them. Simulators generate synthetic experience; the training-data layer curates real-world footage and keeps the two aligned for sim2real work. Teams run it alongside Isaac Sim, Newton, and MuJoCo (NVIDIA; MuJoCo).</div></div></div>
+<div class="vb-take"><h3>The models are ready. The data layer usually isn&#x27;t.</h3><p>Physical AI will be trained on video either way — the question is whether your corpus is a pile of prepped samples dying in S3 or a versioned, provenance-tracked database your whole lab can query in 200 ms. To see is to know.</p><a class="vb-btn" href="https://console.videodb.io" rel="noopener" target="_blank">Put your corpus to work &#8594;</a></div>
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>VideoDB — https://videodb.io</li>
+<li>VideoDB Docs — https://docs.videodb.io</li>
+<li>VideoDB Labs — https://labs.videodb.io</li>
+<li>Kim et al., OpenVLA: An Open-Source Vision-Language-Action Model — https://arxiv.org/abs/2406.09246</li>
+<li>Grauman et al., Ego4D: Around the World in 3,000 Hours of Egocentric Video — https://arxiv.org/abs/2110.07058</li>
+<li>NVIDIA Isaac Sim — https://developer.nvidia.com/isaac/sim</li>
+<li>MuJoCo physics engine — https://mujoco.org/</li>
+<li>Nielsen Norman Group, Response Times: The 3 Important Limits — https://www.nngroup.com/articles/response-times-3-important-limits/</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>

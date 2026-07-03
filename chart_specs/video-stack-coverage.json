@@ -1,0 +1,14 @@
+{
+  "file": "video-stack-coverage",
+  "title": "Stages of ingest → index → memory → search → edit → stream covered (of 6)",
+  "rows": [
+    ["Google Video Intelligence", 1, "annotation only", false],
+    ["AWS Rekognition", 1, "annotation only", false],
+    ["Mux / Cloudflare Stream", 2, "ingest + stream", false],
+    ["Twelve Labs / Gemini", 2, "index + per-call analysis", false],
+    ["DIY stitched stack", 6, "~8 services, ~6 weeks", false],
+    ["VideoDB", 6, "one API, ~5 min to first query", true]
+  ],
+  "footnote": "Capability count across the six-stage span, per vendor documentation (see blog Sources). DIY covers the span at the cost of ~8 stitched services (videodb.io).",
+  "type": "bar"
+}

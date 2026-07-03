@@ -1,0 +1,6 @@
+{ "file": "agent-video-stack",
+  "title": "Giving an agent video perception: stitched stack vs. VideoDB",
+  "rows": [["Stitched frankenstack", 8, "8 services · ~6 weeks", false],
+           ["VideoDB", 1, "1 API · ~5 min to first query", true]],
+  "footnote": "Services required to ship agent video perception. Source: videodb.io.",
+  "type": "bar" }

@@ -1,0 +1,6 @@
+{ "file": "perception-layer-integration-timeline",
+  "title": "Clinical perception at 1,000+ camera scale: integration timelines",
+  "rows": [["Previous stitched integration", 39, "~9 months", false],
+           ["Perception layer on VideoDB", 8, "~8 weeks", true]],
+  "footnote": "Source: videodb.io (CloudPhysician, 1,000+ ICU cameras, sub-second alerts).",
+  "type": "bar" }

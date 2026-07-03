@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video Moderation API: Build an AI Moderation Pipeline</title>
+<meta name="description" content="Build a video moderation API pipeline: profanity detection, visual policy checks with custom indexes, and human review queues with playable evidence clips.">
+<link rel="canonical" href="https://videodb.io/blog/video-content-moderation-with-ai">
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "Article", "headline": "Video Moderation API: Build an AI Moderation Pipeline", "description": "Build a video moderation API pipeline: profanity detection, visual policy checks with custom indexes, and human review queues with playable evidence clips.", "author": {"@type": "Organization", "name": "VideoDB"}, "publisher": {"@type": "Organization", "name": "VideoDB", "url": "https://videodb.io"}, "mainEntityOfPage": {"@type": "WebPage", "@id": "https://videodb.io/blog/video-content-moderation-with-ai"}}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "What is a video moderation API?", "acceptedAnswer": {"@type": "Answer", "text": "A video moderation API screens video against content policy programmatically: transcribing speech, analyzing visuals, detecting policy-relevant events, and returning flags with timestamps. Built on a video database, each flag also carries a playable evidence clip for human review."}}, {"@type": "Question", "name": "Can AI fully automate content moderation?", "acceptedAnswer": {"@type": "Answer", "text": "No. Production systems use ML-first triage with humans reviewing the flagged 1\u20135% of volume (AWS Rekognition docs), because context-dependent categories \u2014 satire, news, medical content \u2014 resist full automation. Design the pipeline around the review queue, not instead of it."}}, {"@type": "Question", "name": "How does profanity detection work on video?", "acceptedAnswer": {"@type": "Answer", "text": "The audio is indexed as time-aligned spoken words, then searched \u2014 semantically, not just by wordlist \u2014 for profanity, threats, and harassment. Each hit returns the timestamp and surrounding speech, and a padded evidence clip is materialized for review."}}, {"@type": "Question", "name": "How do you moderate live streams?", "acceptedAnswer": {"@type": "Answer", "text": "Point the same index types at the stream: RTStream ingests RTMP/RTSP feeds, runs speech and visual policy indexes continuously, and fires webhook alerts with sub-second latency, tested at 1,000+ concurrent feeds (videodb.io)."}}, {"@type": "Question", "name": "Can I use my own moderation model?", "acceptedAnswer": {"@type": "Answer", "text": "Yes. Intelligence is pluggable: your classifier wraps as an index alongside the built-in layers, and your model IP is not exposed \u2014 the pattern proprietary-CV teams like Voxel use on the same platform (videodb.io)."}}]}</script><script type="application/ld+json">{"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": [{"@type": "ListItem", "position": 1, "name": "Home", "item": "https://videodb.io/"}, {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://videodb.io/blog"}, {"@type": "ListItem", "position": 3, "name": "Video Moderation API: Build an AI Moderation Pipeline", "item": "https://videodb.io/blog/video-content-moderation-with-ai"}]}</script>
+<style>
+.vb-wrap *,.vb-wrap *::before,.vb-wrap *::after{box-sizing:border-box}
+body{background:#0B0B0C;margin:0}
+.vb-wrap{max-width:760px;margin:0 auto;padding:0 20px 60px;font-family:Inter,system-ui,-apple-system,sans-serif;font-size:16px;line-height:1.75;color:#F4F2EE;background:#0B0B0C;-webkit-font-smoothing:antialiased}
+.vb-logo{display:inline-flex;align-items:center;gap:7px;font-family:Inter,sans-serif;font-weight:700;font-size:15px;letter-spacing:-.01em;color:#F4F2EE}
+.vb-logo b{color:#E85810;font-weight:700}
+.vb-topbar{display:flex;align-items:center;justify-content:space-between;padding:22px 0 0}
+.vb-topbar a{text-decoration:none}
+.vb-back{font-size:12.5px;color:#8C8C94;text-decoration:none}
+.vb-back:hover{color:#E85810}
+.vb-eyebrow{display:inline-block;background:#141416;border:1px solid #2A2A2E;color:#E85810;font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:5px 12px;border-radius:4px;margin:34px 0 18px}
+.vb-title{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(25px,4vw,38px);font-weight:400;color:#F4F2EE;line-height:1.16;letter-spacing:-.01em;margin:0 0 12px}
+.vb-dek{font-size:16px;color:#8C8C94;margin-bottom:6px}
+.vb-meta{font-size:13px;color:#8C8C94;margin-bottom:22px}
+.vb-cover{width:100%;border-radius:14px;margin-bottom:26px}
+.vb-cover img{width:100%;height:auto;display:block;border-radius:14px}
+.vb-cover .vb-chart,.vb-fig.vb-chart{background:#0B0B0C;border:1px solid #2A2A2E;border-radius:14px;padding:14px 16px}
+.vb-fig{margin:24px 0}.vb-fig svg{width:100%;height:auto;display:block}
+.vb-fig.vb-photo img{width:100%;height:auto;border-radius:14px;display:block}
+.vb-cap{font-size:13px;color:#8C8C94;margin-top:10px;line-height:1.5}
+.vb-intro{font-size:17.5px;color:#F4F2EE;line-height:1.7;margin-bottom:30px}
+.vb-ki{border:1px solid #2A2A2E;border-radius:12px;margin-bottom:26px;overflow:hidden;background:#141416}
+.vb-ki-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none}
+.vb-ki-l{display:flex;align-items:center;gap:10px}
+.vb-ki-dia{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:8px solid #E85810;flex-shrink:0}
+.vb-ki-lab{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#F4F2EE}
+.vb-ki-chev{color:#E85810;font-size:15px;transition:transform .25s}.vb-ki-chev.open{transform:rotate(180deg)}
+.vb-ki-body{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .25s;padding:0 18px}
+.vb-ki-body.open{max-height:1000px;padding:6px 18px 14px}
+.vb-ki-item{display:flex;gap:12px;padding:10px 0;border-bottom:1px solid #2A2A2E;font-size:14.5px;line-height:1.6;color:#F4F2EE}
+.vb-ki-item:last-child{border-bottom:none}
+.vb-ki-dot{width:7px;height:7px;background:#E85810;border-radius:50%;margin-top:8px;flex-shrink:0}
+.vb-ki-item strong{color:#E85810}
+.vb-toc{background:#141416;border:1px solid #2A2A2E;border-radius:12px;padding:22px 24px;margin-bottom:40px}
+.vb-toc-t{font-size:12px;font-weight:700;color:#E85810;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+.vb-toc ol{list-style:none;counter-reset:t;display:flex;flex-direction:column;gap:2px;margin:0;padding:0}
+.vb-toc li{counter-increment:t}
+.vb-toc a{display:flex;align-items:baseline;gap:10px;color:#8C8C94;text-decoration:none;font-size:13.5px;padding:3px 0;transition:color .2s}
+.vb-toc a::before{content:counter(t,decimal-leading-zero);font-size:11px;font-weight:700;color:#E85810;min-width:22px;font-variant-numeric:tabular-nums}
+.vb-toc a:hover{color:#F4F2EE}
+.vb-wrap h2{font-family:'Archivo Black',Inter,sans-serif;font-size:clamp(19px,3vw,24px);font-weight:400;color:#F4F2EE;border-bottom:2px solid #E85810;padding-bottom:9px;margin:44px 0 16px;line-height:1.3}
+.vb-wrap h3{font-family:Inter,sans-serif;font-size:18px;font-weight:700;color:#F4F2EE;margin:26px 0 10px}
+.vb-wrap p{color:#C9C7C2;margin:0 0 16px;font-size:16px}
+.vb-wrap a{color:#E85810;font-weight:500;text-decoration:underline;text-underline-offset:2px}
+.vb-wrap a:hover{color:#F07030}
+.vb-wrap ul,.vb-wrap ol{margin:0 0 16px;padding-left:1.3em;color:#C9C7C2}.vb-wrap li{margin:.3em 0}
+.vb-wrap strong{color:#F4F2EE}
+.vb-wrap code{font-family:'SF Mono',ui-monospace,Menlo,monospace;font-size:.88em;background:#141416;border:1px solid #2A2A2E;border-radius:5px;padding:.12em .38em;color:#F4F2EE}
+.vb-wrap pre{background:#141416;border:1px solid #2A2A2E;border-left:3px solid #E85810;border-radius:10px;padding:16px 18px;overflow-x:auto;margin:20px 0;line-height:1.6}
+.vb-wrap pre code{background:none;border:none;padding:0;font-size:13.5px;color:#E8E6E1}
+.vb-tbl{overflow-x:auto;margin:22px 0;border-radius:12px;border:1px solid #2A2A2E}
+.vb-tbl table{width:100%;border-collapse:collapse;font-size:14.5px;background:#141416}
+.vb-tbl thead tr{background:#000}
+.vb-tbl thead th{padding:12px 15px;text-align:left;color:#F4F2EE;font-size:12.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.vb-tbl tbody td{padding:11px 15px;border-bottom:1px solid #2A2A2E;color:#C9C7C2;vertical-align:top;font-variant-numeric:tabular-nums}
+.vb-tbl tbody tr:last-child td{border-bottom:none}
+.vb-good{color:#3DD68C;font-weight:600}.vb-bad{color:#E5484D;font-weight:600}
+.vb-cta{background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:12px;padding:18px 22px;margin:24px 0}
+.vb-cta p{margin:0;font-size:15.5px;color:#F4F2EE}
+.vb-cta a{display:inline-block;margin-top:10px;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14px;padding:10px 20px;border-radius:8px;text-decoration:none}
+.vb-cta a:hover{background:#F07030}
+.vb-also{margin:36px 0}
+.vb-also-lab{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#8C8C94;margin-bottom:10px}
+.vb-also-card{display:flex;align-items:center;justify-content:space-between;background:#141416;border:1px solid #2A2A2E;border-left:4px solid #E85810;border-radius:10px;padding:14px 16px;text-decoration:none;gap:10px;margin-bottom:10px}
+.vb-also-card span{font-size:14px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-also-arr{color:#E85810;font-size:18px;flex-shrink:0}
+.vb-faq{margin:44px 0}.vb-faq h2{margin-top:0}
+.vb-faq-item{border-bottom:1px solid #2A2A2E}
+.vb-faq-q{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;cursor:pointer;user-select:none;gap:12px}
+.vb-faq-q span{font-size:15px;font-weight:600;color:#F4F2EE;line-height:1.4}
+.vb-faq-ic{font-size:24px;color:#E85810;flex-shrink:0;transition:transform .25s;line-height:1;font-weight:300}
+.vb-faq-ic.open{transform:rotate(45deg)}
+.vb-faq-a{max-height:0;overflow:hidden;transition:max-height .3s ease,padding .25s;font-size:15px;color:#C9C7C2;line-height:1.7}
+.vb-faq-a.open{max-height:600px;padding-bottom:16px}
+.vb-take{background:#141416;border:1px solid #2A2A2E;border-radius:16px;padding:32px 28px;margin:44px 0 28px;text-align:center;background-image:radial-gradient(circle at 85% 15%,rgba(232,88,16,.14),transparent 45%)}
+.vb-take h3{font-family:'Archivo Black',Inter,sans-serif;font-size:20px;font-weight:400;color:#F4F2EE;margin:0 0 10px}
+.vb-take p{font-size:15px;color:#8C8C94;margin:0 auto 22px;max-width:540px;line-height:1.65}
+.vb-btn{display:inline-block;background:#E85810;color:#0B0B0C;font-weight:700;font-size:14.5px;padding:13px 28px;border-radius:8px;text-decoration:none}
+.vb-btn:hover{background:#F07030}
+.vb-src{margin-top:34px;padding-top:18px;border-top:1px solid #2A2A2E;font-size:13px;color:#8C8C94}
+.vb-src h2{font-size:14px;border:none;color:#8C8C94;font-family:Inter,sans-serif;font-weight:700;margin:0 0 8px;padding:0}
+.vb-src a{color:#8C8C94}
+.vb-foot{margin-top:44px;padding-top:20px;border-top:1px solid #2A2A2E;display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:#8C8C94}
+@media(max-width:600px){.vb-wrap{font-size:15.5px}}
+</style>
+</head><body>
+<div class="vb-wrap">
+<div class="vb-topbar"><a href="index.html"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span></a><a class="vb-back" href="index.html">&#8592; All guides</a></div>
+<div class="vb-eyebrow">Developer guide</div>
+<h1 class="vb-title">Video Moderation API: Build an AI Moderation Pipeline</h1>
+<div class="vb-dek">For platform engineers who need to screen uploaded and live video against policy — with evidence a human reviewer can watch, not a score they have to trust.</div>
+<div class="vb-meta">VideoDB &nbsp;&middot;&nbsp; Updated July 2026 &nbsp;&middot;&nbsp; 9 min read</div>
+<div class="vb-cover"><figure class="vb-fig vb-chart"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 190"  font-family="'Inter',system-ui,sans-serif">
+<rect width="720" height="190" rx="12" fill="#0B0B0C"/>
+<text x="40" y="34" font-size="15" font-family="'Archivo Black','Inter',sans-serif" fill="#F4F2EE" letter-spacing=".02em">SHARE OF CONTENT VOLUME REACHING HUMAN REVIEWERS</text>
+<text x="288" y="79" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">Manual-first moderation</text>
+<rect x="300" y="62" width="360" height="26" rx="5" fill="#2A2A2E"/>
+<text x="668" y="79" font-size="13" font-weight="700" fill="#8C8C94" style="font-variant-numeric:tabular-nums">100% of volume</text>
+<text x="288" y="125" font-size="13" font-weight="600" fill="#F4F2EE" text-anchor="end">ML-first triage (flagged queue)</text>
+<rect x="300" y="108" width="18" height="26" rx="5" fill="#E85810"/>
+<text x="326" y="125" font-size="13" font-weight="700" fill="#E85810" style="font-variant-numeric:tabular-nums">~1–5% of volume</text>
+<text x="40" y="176" font-size="11.5" fill="#8C8C94">Percent of total content volume routed to human review. Source: AWS Rekognition documentation.</text>
+</svg><figcaption class="vb-cap">ML-first triage cuts the human review queue to roughly 1–5% of total volume. Source: <a href="https://docs.aws.amazon.com/rekognition/latest/dg/moderation.html" rel="noopener" target="_blank">AWS Rekognition documentation</a>.</figcaption></figure></div>
+<p class="vb-intro">A <strong>video moderation API</strong> screens video content against policy programmatically: it transcribes speech to catch profanity and harassment, analyzes visuals for policy violations, and routes flagged moments to human reviewers. The pipeline worth building has one property most miss — every flag carries a playable evidence clip, so a reviewer judges the actual moment instead of a thumbnail and a confidence score. This tutorial builds that pipeline in Python: a spoken-word layer for language, custom-prompt visual indexing for policy, and a review queue with watchable evidence.</p>
+
+<div class="vb-toc"><div class="vb-toc-t">Table of contents</div><ol><li><a href="#why-is-video-moderation-harder-than-text-moderation">Why is video moderation harder than text moderation?</a></li><li><a href="#what-you-ll-build">What you&#x27;ll build</a></li><li><a href="#prerequisites">Prerequisites</a></li><li><a href="#step-1-ingest-and-index-speech">Step 1 — Ingest and index speech</a></li><li><a href="#step-2-compile-your-policy-into-a-visual-index">Step 2 — Compile your policy into a visual index</a></li><li><a href="#step-3-build-the-human-review-queue">Step 3 — Build the human-review queue</a></li><li><a href="#step-4-run-the-same-checks-on-live-streams">Step 4 — Run the same checks on live streams</a></li><li><a href="#how-accurate-is-ai-moderation-honestly">How accurate is AI moderation — honestly?</a></li><li><a href="#production-notes">Production notes</a></li><li><a href="#faq">Frequently asked questions</a></li></ol></div>
+
+
+<h2 id="why-is-video-moderation-harder-than-text-moderation">Why is video moderation harder than text moderation?</h2>
+<p>Video moderation is harder because a violation can live in any layer — the words spoken, the things shown, the text on screen — and because context decides severity: the same clip can be medical education or graphic content. Text moderation is a single classification over a string; even there, production systems require careful category design and continuous human feedback (<a href="https://arxiv.org/abs/2208.03274" rel="noopener" target="_blank">OpenAI, A Holistic Approach to Undesired Content Detection, arXiv:2208.03274</a>). Video multiplies the problem across time and modality.</p>
+<p>Scale is the other constraint. Human-only review does not scale to platform volume; the established industry pattern is ML-first triage, where models filter the stream and humans review the <strong>1–5% of volume</strong> that gets flagged (<a href="https://docs.aws.amazon.com/rekognition/latest/dg/moderation.html" rel="noopener" target="_blank">AWS Rekognition moderation docs</a>). That makes the moderation problem an infrastructure problem: the pipeline must index everything, flag reliably, and hand reviewers exactly the moments that matter — which is what a video database is for, as covered in <a href="what-is-video-infrastructure-for-ai-agents.html">video infrastructure for AI agents ↗</a>.</p>
+
+<h2 id="what-you-ll-build">What you'll build</h2>
+<p>A moderation pipeline with four stages:</p>
+<ol>
+<li><strong>Speech screening</strong> — profanity and policy language detection over a spoken-word index.</li>
+<li><strong>Visual policy checks</strong> — your written content policy compiled into a custom-prompt visual index.</li>
+<li><strong>A human-review queue</strong> — flagged moments with playable evidence clips and timestamps.</li>
+<li><strong>Live mode</strong> — the same checks running on streams with webhook alerts.</li>
+</ol>
+<h2 id="prerequisites">Prerequisites</h2>
+<ul>
+<li>Python 3.9+ and <code>pip install videodb</code></li>
+<li>A VideoDB API key</li>
+<li>A written content policy — the pipeline is only as good as the policy you can articulate</li>
+</ul>
+<h2 id="step-1-ingest-and-index-speech">Step 1 — Ingest and index speech</h2>
+<pre><code class="language-python">import videodb
+
+conn = videodb.connect(api_key=&quot;YOUR_API_KEY&quot;)
+coll = conn.get_collection()
+
+video = coll.upload(url=&quot;https://example.com/user-upload-8271.mp4&quot;)
+video.index_spoken_words()
+
+flags = []
+for term in [&quot;profanity&quot;, &quot;threats of violence&quot;, &quot;harassment&quot;]:
+    results = video.search(term)
+    for shot in results.shots:
+        flags.append({&quot;layer&quot;: &quot;speech&quot;, &quot;reason&quot;: term,
+                      &quot;start&quot;: shot.start, &quot;end&quot;: shot.end,
+                      &quot;text&quot;: shot.text})
+</code></pre>
+<p>Semantic search over the spoken-word index catches more than a wordlist: "threats of violence" matches phrasing a blocklist never anticipated. VideoDB's published safety examples cover this exact pattern — content moderation and profanity detection are two of its documented AI-safety use cases (<a href="https://docs.videodb.io" rel="noopener" target="_blank">docs.videodb.io</a>).</p>
+<h2 id="step-2-compile-your-policy-into-a-visual-index">Step 2 — Compile your policy into a visual index</h2>
+<p>Custom-prompt indexing lets you express policy in plain language and run it as an index layer. This is the moderation-specific payoff of "indexes as code":</p>
+<pre><code class="language-python">video.index_scenes(
+    prompt=(
+        &quot;You are a content policy reviewer. Flag and describe any &quot;
+        &quot;scene containing: graphic violence or injury; nudity or &quot;
+        &quot;sexual content; weapons brandished at people; drug use; &quot;
+        &quot;or visible personal data such as ID documents. &quot;
+        &quot;State which category applies and what is visible.&quot;
+    )
+)
+
+visual_hits = video.search(&quot;policy violation&quot;, index_type=&quot;scene&quot;)
+</code></pre>
+<p>Because intelligence is pluggable, the model behind this layer can be Gemini, OpenAI, Anthropic, Twelve Labs, or your own classifier wrapped as an index — teams with proprietary moderation models keep their model IP private while using the same pipeline (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>). On-screen text (slurs in overlays, phone numbers, doxxing) is its own sublayer; see <a href="extract-text-from-video-ocr.html">extracting text from video with OCR ↗</a>.</p>
+<blockquote class="vb-cta">
+<p><strong>Your policy, compiled to an index.</strong> Write the rule in plain language; run it over every upload. <a href="https://docs.videodb.io" rel="noopener" target="_blank">Read the docs →</a></p>
+</blockquote>
+<h2 id="step-3-build-the-human-review-queue">Step 3 — Build the human-review queue</h2>
+<p>Automated flags should route to humans with evidence attached. The materialized clip is the difference between a review queue and a guessing game:</p>
+<pre><code class="language-python">def enqueue_for_review(video, flag):
+    clip_url = video.generate_stream(
+        timeline=[(max(0, flag[&quot;start&quot;] - 5), flag[&quot;end&quot;] + 5)]
+    )
+    review_queue.push({
+        &quot;video_id&quot;: video.id,
+        &quot;reason&quot;: flag[&quot;reason&quot;],
+        &quot;evidence_clip&quot;: clip_url,          # playable, padded ±5s
+        &quot;timestamp&quot;: (flag[&quot;start&quot;], flag[&quot;end&quot;]),
+        &quot;auto_action&quot;: &quot;hold&quot; if flag[&quot;layer&quot;] == &quot;speech&quot; else &quot;block&quot;,
+    })
+
+for flag in flags:
+    enqueue_for_review(video, flag)
+</code></pre>
+<p>The ±5 second padding gives reviewers context — the sentence before the slur, the scene before the cut. Clips materialize in milliseconds without re-encoding, so the queue stays cheap even at platform volume (<a href="https://docs.videodb.io" rel="noopener" target="_blank">docs.videodb.io</a>).</p>
+<h2 id="step-4-run-the-same-checks-on-live-streams">Step 4 — Run the same checks on live streams</h2>
+<p>Recorded and live are modes of the same backend, so live moderation is the same indexes pointed at a stream, with alerts instead of queries:</p>
+<pre><code class="language-python">rtstream = conn.get_rtstream(url=&quot;rtmp://ingest.example.com/live/creator-991&quot;)
+
+rtstream.index_scenes(prompt=&quot;Flag nudity, graphic violence, or weapons&quot;)
+rtstream.create_alert(
+    event=&quot;policy violation&quot;,
+    webhook=&quot;https://trust.example.com/hooks/moderation&quot;,
+)
+</code></pre>
+<p>RTStream delivers webhook and WebSocket events with sub-second latency and is tested at 1,000+ concurrent feeds (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>) — the same architecture behind <a href="live-camera-intelligence.html">live camera intelligence ↗</a>.</p>
+<blockquote class="vb-cta">
+<p><strong>Live and recorded, one pipeline.</strong> The index that screens uploads also watches streams. <a href="https://docs.videodb.io" rel="noopener" target="_blank">See the quickstart →</a></p>
+</blockquote>
+<h2 id="how-accurate-is-ai-moderation-honestly">How accurate is AI moderation — honestly?</h2>
+<p>Not accurate enough to run unsupervised, and you should design for that. Three realities to plan around:</p>
+<ul>
+<li><strong>False negatives are structural.</strong> Violations can be oblique — coded language, context-dependent imagery, policy-violating text in a corner of the frame. Measured VLM accuracy on video text tasks ranges from 49% to 76% depending on model (<a href="https://github.com/video-db/ocr-benchmark" rel="noopener" target="_blank">ocr-benchmark</a>); assume comparable variance on your policy categories until you have measured them.</li>
+<li><strong>False positives burn reviewers and creators.</strong> Medical content, news footage, and art trip naive visual checks. Calibrate thresholds per category on a labeled sample of your own content, and track precision per category, not one blended score.</li>
+<li><strong>Human-in-the-loop is the system, not a fallback.</strong> OpenAI's production moderation work found continuous human labeling and active learning essential to keep classifiers aligned with evolving policy (<a href="https://arxiv.org/abs/2208.03274" rel="noopener" target="_blank">arXiv:2208.03274</a>). Route uncertain flags to review, feed reviewer decisions back as labeled data, and re-index when models or policies improve — indexes are additive and re-runnable, so yesterday's footage can be re-screened under today's policy.</li>
+</ul>
+<div class="vb-tbl"><table>
+<thead>
+<tr>
+<th>Design choice</th>
+<th>Auto-block</th>
+<th>Auto-hold + human review</th>
+<th>Auto-pass</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>When</td>
+<td>High-confidence, severe categories</td>
+<td>Medium confidence, or severe-but-ambiguous</td>
+<td>Below flag threshold</td>
+</tr>
+<tr>
+<td>Risk</td>
+<td>False positives silence users</td>
+<td>Queue latency</td>
+<td>False negatives ship</td>
+</tr>
+<tr>
+<td>Mitigation</td>
+<td>Appeal path with evidence clip</td>
+<td>Padded clips speed review</td>
+<td>Spot-sample audits</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="production-notes">Production notes</h2>
+<ul>
+<li><strong>Compliance posture matters in moderation, where footage can involve minors, health data, or regulated content.</strong> VideoDB runs managed cloud, in your VPC, or at the edge, with SOC 2 Type II, ISO 27001, HIPAA-ready, and GDPR-aligned posture, multi-region across US, EU, and India (<a href="https://videodb.io" rel="noopener" target="_blank">videodb.io</a>).</li>
+<li><strong>Keep the evidence trail.</strong> Store flag, clip URL, reviewer decision, and policy version together; when a takedown is appealed or regulators ask, the playable moment is your audit record.</li>
+<li><strong>Retention is policy too.</strong> Scene-level memory is retention-aware — set windows that match your legal obligations rather than keeping everything forever.</li>
+<li><strong>Trade-offs, honestly:</strong> if you only moderate still images, a point classifier API is simpler and cheaper. The indexed-pipeline approach earns its keep when content is continuous — long uploads and live streams — where "where in these three hours is the violation?" is the actual problem.</li>
+</ul>
+<blockquote class="vb-cta">
+<p><strong>Flags with evidence, not just scores.</strong> Every item in the queue is a watchable moment. <a href="https://docs.videodb.io" rel="noopener" target="_blank">Read the docs →</a></p>
+</blockquote>
+
+<div class="vb-also" id="also-read"><div class="vb-also-lab">Also read</div><a class="vb-also-card" href="what-is-video-infrastructure-for-ai-agents.html"><span>video infrastructure for AI agents</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="extract-text-from-video-ocr.html"><span>extracting text from video with OCR</span><span class="vb-also-arr">&#8594;</span></a><a class="vb-also-card" href="live-camera-intelligence.html"><span>live camera intelligence</span><span class="vb-also-arr">&#8594;</span></a></div>
+<div class="vb-faq" id="faq"><h2>Frequently asked questions</h2><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>What is a video moderation API?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">A video moderation API screens video against content policy programmatically: transcribing speech, analyzing visuals, detecting policy-relevant events, and returning flags with timestamps. Built on a video database, each flag also carries a playable evidence clip for human review.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can AI fully automate content moderation?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">No. Production systems use ML-first triage with humans reviewing the flagged 1–5% of volume (AWS Rekognition docs), because context-dependent categories — satire, news, medical content — resist full automation. Design the pipeline around the review queue, not instead of it.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How does profanity detection work on video?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">The audio is indexed as time-aligned spoken words, then searched — semantically, not just by wordlist — for profanity, threats, and harassment. Each hit returns the timestamp and surrounding speech, and a padded evidence clip is materialized for review.</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>How do you moderate live streams?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Point the same index types at the stream: RTStream ingests RTMP/RTSP feeds, runs speech and visual policy indexes continuously, and fires webhook alerts with sub-second latency, tested at 1,000+ concurrent feeds (videodb.io).</div></div><div class="vb-faq-item"><div class="vb-faq-q" onclick="vbFAQ(this)"><span>Can I use my own moderation model?</span><span class="vb-faq-ic">+</span></div><div class="vb-faq-a">Yes. Intelligence is pluggable: your classifier wraps as an index alongside the built-in layers, and your model IP is not exposed — the pattern proprietary-CV teams like Voxel use on the same platform (videodb.io).</div></div></div>
+
+<div class="vb-src"><h2>Sources</h2><ul>
+<li>VideoDB — https://videodb.io</li>
+<li>VideoDB Documentation — https://docs.videodb.io</li>
+<li>Amazon Rekognition: Moderating content — https://docs.aws.amazon.com/rekognition/latest/dg/moderation.html</li>
+<li>A Holistic Approach to Undesired Content Detection in the Real World (arXiv:2208.03274) — https://arxiv.org/abs/2208.03274</li>
+<li>OCR Benchmark: VLMs vs. traditional OCR on video — https://github.com/video-db/ocr-benchmark</li>
+<li>Director: agent framework and editing SDK — https://github.com/video-db/Director</li>
+<li>Video Understanding with Large Language Models: A Survey (arXiv:2312.17432) — https://arxiv.org/abs/2312.17432</li>
+</ul></div>
+<div class="vb-foot"><span class="vb-logo"><svg viewBox="0 0 14 12" width="13" height="11" aria-hidden="true"><path d="M0 0h14L7 12Z" fill="#E85810"/></svg><span>Video</span><b>DB</b></span><span>To see is to know.</span></div>
+</div>
+<script>
+function vbKI(h){var b=h.nextElementSibling,c=h.querySelector('.vb-ki-chev');b.classList.toggle('open');c.classList.toggle('open');}
+function vbFAQ(q){var a=q.nextElementSibling,i=q.querySelector('.vb-faq-ic'),open=a.classList.contains('open');
+document.querySelectorAll('.vb-faq-a.open').forEach(function(x){x.classList.remove('open');x.previousElementSibling.querySelector('.vb-faq-ic').classList.remove('open');});
+if(!open){a.classList.add('open');i.classList.add('open');}}
+document.addEventListener('DOMContentLoaded',function(){var b=document.querySelector('.vb-ki-body'),c=document.querySelector('.vb-ki-chev');if(b){b.classList.add('open');if(c)c.classList.add('open');}});
+</script>
+</body></html>
